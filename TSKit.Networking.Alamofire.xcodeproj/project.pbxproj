@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		0057DDBD2013A737002B8429 /* TSKit_Networking_Alamofire.h in Headers */ = {isa = PBXBuildFile; fileRef = 0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0057DDC42013A7BC002B8429 /* TSKit_Networking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */; };
+		0057DDC92013A93E002B8429 /* UIImageAlamofireEx.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC72013A93E002B8429 /* UIImageAlamofireEx.swift */; };
+		0057DDCA2013A93E002B8429 /* AlamofireRequestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */; };
+		2B2A2A151852CDA368E0B656 /* Pods_TSKit_Networking_Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65E309F73CE6A36BC015592F /* Pods_TSKit_Networking_Alamofire.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -16,6 +19,11 @@
 		0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TSKit_Networking_Alamofire.h; sourceTree = "<group>"; };
 		0057DDBC2013A737002B8429 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Networking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		0057DDC72013A93E002B8429 /* UIImageAlamofireEx.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UIImageAlamofireEx.swift; sourceTree = "<group>"; };
+		0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestManager.swift; sourceTree = "<group>"; };
+		3467CB8EFC62FF06BE86B941 /* Pods-TSKit.Networking.Alamofire.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TSKit.Networking.Alamofire.debug.xcconfig"; path = "Pods/Target Support Files/Pods-TSKit.Networking.Alamofire/Pods-TSKit.Networking.Alamofire.debug.xcconfig"; sourceTree = "<group>"; };
+		65E309F73CE6A36BC015592F /* Pods_TSKit_Networking_Alamofire.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_TSKit_Networking_Alamofire.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		791D5C41E2BE1A6CCB72A06A /* Pods-TSKit.Networking.Alamofire.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-TSKit.Networking.Alamofire.release.xcconfig"; path = "Pods/Target Support Files/Pods-TSKit.Networking.Alamofire/Pods-TSKit.Networking.Alamofire.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -24,6 +32,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0057DDC42013A7BC002B8429 /* TSKit_Networking.framework in Frameworks */,
+				2B2A2A151852CDA368E0B656 /* Pods_TSKit_Networking_Alamofire.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -36,6 +45,7 @@
 				0057DDBA2013A737002B8429 /* TSKit.Networking.Alamofire */,
 				0057DDB92013A737002B8429 /* Products */,
 				0057DDC32013A7BC002B8429 /* Frameworks */,
+				D7ACFFA9B1278703DE283A7C /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -50,6 +60,7 @@
 		0057DDBA2013A737002B8429 /* TSKit.Networking.Alamofire */ = {
 			isa = PBXGroup;
 			children = (
+				0057DDC62013A93E002B8429 /* Sources */,
 				0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */,
 				0057DDBC2013A737002B8429 /* Info.plist */,
 			);
@@ -60,8 +71,27 @@
 			isa = PBXGroup;
 			children = (
 				0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */,
+				65E309F73CE6A36BC015592F /* Pods_TSKit_Networking_Alamofire.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		0057DDC62013A93E002B8429 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				0057DDC72013A93E002B8429 /* UIImageAlamofireEx.swift */,
+				0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		D7ACFFA9B1278703DE283A7C /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				3467CB8EFC62FF06BE86B941 /* Pods-TSKit.Networking.Alamofire.debug.xcconfig */,
+				791D5C41E2BE1A6CCB72A06A /* Pods-TSKit.Networking.Alamofire.release.xcconfig */,
+			);
+			name = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -82,10 +112,12 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0057DDC02013A737002B8429 /* Build configuration list for PBXNativeTarget "TSKit.Networking.Alamofire" */;
 			buildPhases = (
+				D086B8C06212B1E00330C375 /* [CP] Check Pods Manifest.lock */,
 				0057DDB32013A737002B8429 /* Sources */,
 				0057DDB42013A737002B8429 /* Frameworks */,
 				0057DDB52013A737002B8429 /* Headers */,
 				0057DDB62013A737002B8429 /* Resources */,
+				2AA8387972FC9C7220EDD022 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -138,11 +170,49 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		2AA8387972FC9C7220EDD022 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "[CP] Copy Pods Resources";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-TSKit.Networking.Alamofire/Pods-TSKit.Networking.Alamofire-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		D086B8C06212B1E00330C375 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-TSKit.Networking.Alamofire-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		0057DDB32013A737002B8429 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0057DDCA2013A93E002B8429 /* AlamofireRequestManager.swift in Sources */,
+				0057DDC92013A93E002B8429 /* UIImageAlamofireEx.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -264,6 +334,7 @@
 		};
 		0057DDC12013A737002B8429 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 3467CB8EFC62FF06BE86B941 /* Pods-TSKit.Networking.Alamofire.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
@@ -285,6 +356,7 @@
 		};
 		0057DDC22013A737002B8429 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 791D5C41E2BE1A6CCB72A06A /* Pods-TSKit.Networking.Alamofire.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;

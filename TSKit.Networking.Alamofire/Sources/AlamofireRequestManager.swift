@@ -1,5 +1,5 @@
 import Alamofire
-import TSKit
+import TSKit_Networking
 /**
  RequestManager is part of TSNetworking layer. It provides a way to do request calls defined by Request objects.
  Key features:
