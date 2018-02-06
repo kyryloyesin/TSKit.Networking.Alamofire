@@ -9,9 +9,9 @@ import TSKit_Networking
  4. Simple and obvious way to create request calls.
  
  - Requires:   iOS  [2.0; 8.0)
- - Requires:   
- * TSNetworking framework
- * TSUtils
+ - Requires:
+    * TSKit.Core
+    * TSKit.Networking
  
  - Version:    2.0
  - Since:      10/26/2016
@@ -54,11 +54,11 @@ public class AlamofireRequestManager : RequestManager {
     
     private func executeRequest(aRequest : Alamofire.Request?, withRequest request: TSKit.Request, type : AnyResponse.Type, completion: AnyResponseResultCompletion) {
         guard let aRequest = aRequest else {
-            print("\(self.dynamicType): Failed to execute request: \(request)")
+            print("\(type(of: self)): Failed to execute request: \(request)")
             completion(.Failure(error: .InvalidRequest))
             return
         }
-        print("\(self.dynamicType): Executing request: \(request)")
+        print("\(type(of: self)): Executing request: \(request)")
         self.appendResponse(aRequest, request: request, type: type, completion: completion)
     }
     
@@ -132,7 +132,7 @@ private extension AlamofireRequestManager {
     
     func constructUrl(withRequest request: TSKit.Request) -> String? {
         guard let baseUrl = (request.baseUrl ?? self.baseUrl) else {
-            print("\(self.dynamicType): Neither default baseUrl nor request's baseUrl had been specified.")
+            print("\(type(of: self)): Neither default baseUrl nor request's baseUrl had been specified.")
             return nil
         }
         return "\(baseUrl)/\(request.url)"
@@ -169,7 +169,7 @@ private extension AlamofireRequestManager {
 // MARK: - Constructing multipart Alamofire request.
 private extension AlamofireRequestManager {
     
-    func createMultipartRequest(request : MultipartRequest, responseType type: AnyResponse.Type, completion : AnyResponseResultCompletion, creationCompletion : (createdRequest : Alamofire.Request) -> Void) {
+    func createMultipartRequest(request : MultipartRequest, responseType type: AnyResponse.Type, completion : AnyResponseResultCompletion, creationCompletion : (_ createdRequest : Alamofire.Request) -> Void) {
         guard var url = self.constructUrl(withRequest: request) else {
             completion(.Failure(error:.InvalidRequest))
             return
@@ -180,7 +180,7 @@ private extension AlamofireRequestManager {
         var dataParams : [String : AnyObject]? = request.parameters // by default all parameters are dataParams
         if let params = request.parameters {
             urlParams = params.filter {
-                if let customEncoding = request.parametersEncodings?[$0.0] where customEncoding == RequestEncoding.URL {
+                if let customEncoding = request.parametersEncodings?[$0.0], customEncoding == RequestEncoding.URL {
                     return true
                 }
                 return false
@@ -193,23 +193,23 @@ private extension AlamofireRequestManager {
                     return !urlParams.contains { name == $0.0 }
                 }
             }            
-            print("\(self.dynamicType): Encoded params into url: \(url)\n")
+            print("\(type(of: self)): Encoded params into url: \(url)\n")
         }
-        print("\(self.dynamicType): Encoding data for multipart...")
+        print("\(type(of: self)): Encoding data for multipart...")
         self.manager.upload(method, url, headers: headers, multipartFormData: { formData in
-            if let files = request.files where !files.isEmpty {
-                print("\(self.dynamicType): Appending \(files.count) in-memory files...\n")
+            if let files = request.files, !files.isEmpty {
+                print("\(type(of: self)): Appending \(files.count) in-memory files...\n")
                 files.forEach {
-                    print("\(self.dynamicType): Appending file \($0)...\n")
+                    print("\(type(of: self)): Appending file \($0)...\n")
                     
                     formData.appendBodyPart(data: $0.value, name: $0.name, fileName: $0.fileName, mimeType: $0.mimeType)
                 }
                 
             }
-            if let files = request.filePaths where !files.isEmpty {
-                print("\(self.dynamicType): Appending \(files.count) files from storage...\n")
+            if let files = request.filePaths, !files.isEmpty {
+                print("\(type(of: self)): Appending \(files.count) files from storage...\n")
                 files.forEach{
-                    print("\(self.dynamicType): Appending file \($0)...\n")
+                    print("\(type(of: self)): Appending file \($0)...\n")
                     formData.appendBodyPart(fileURL: $0.value, name: $0.name)
                 }
                 
@@ -217,7 +217,7 @@ private extension AlamofireRequestManager {
             
             if let dataParams = dataParams {
                 dataParams.forEach {
-                    print("\(self.dynamicType): Encoding parameter '\($0.0)'...")
+                    print("\(type(of: self)): Encoding parameter '\($0.0)'...")
                     self.appendParam($0.1, withName: $0.0, toFormData: formData, usingEncoding: request.parametersEncoding)
                 }
             }
@@ -227,7 +227,7 @@ private extension AlamofireRequestManager {
                 case let .Success(aRequest, _, _):
                     creationCompletion(createdRequest: aRequest)
                 case .Failure(let error):
-                    print("\(self.dynamicType): Failed to encode data with error: \(error).")
+                    print("\(type(of: self)): Failed to encode data with error: \(error).")
                     completion(.Failure(error: RequestError.InvalidRequest))
                 }
         })
@@ -261,7 +261,7 @@ private extension AlamofireRequestManager {
         let comps = self.createParameterComponent(param, withName: name)
         comps.forEach {
             guard let data = $0.1.dataUsingEncoding(encoding) else {
-                print("\(self.dynamicType): Failed to encode parameter '\($0.0)'")
+                print("\(type(of: self)): Failed to encode parameter '\($0.0)'")
                 return
             }
             formData.appendBodyPart(data: data, name: $0.0)
@@ -276,55 +276,55 @@ private extension AlamofireRequestManager {
         switch type.kind {
         case .JSON: return aRequest.responseJSON { res in
             if let error = res.result.error {
-                print("\(self.dynamicType): Internal error while sending request:\n\(error)")
+                print("\(type(of: self)): Internal error while sending request:\n\(error)")
                 completion(.Failure(error:.NetworkError))
             } else if let json = res.result.value {
-                print("\(self.dynamicType): Received JSON:\n\(json).")
+                print("\(type(of: self)): Received JSON:\n\(json).")
                 if let response = type.init(request: request, body: json) {
                     completion(ResponseResult.Success(response: response))
                 }
                 else {
-                    print("\(self.dynamicType): Specified response type couldn't handle '\(type.kind)'. Response '\(type)' has '\(type.kind)'.")
+                    print("\(type(of: self)): Specified response type couldn't handle '\(type.kind)'. Response '\(type)' has '\(type.kind)'.")
                     completion(.Failure(error:.InvalidResponseKind))
                 }
             } else {
-                print("\(self.dynamicType): Couldn't get any response.")
+                print("\(type(of: self)): Couldn't get any response.")
                 completion(.Failure(error: .FailedRequest))
             }
             }
         case .Data: return aRequest.responseData {res in
             if let error = res.result.error {
-                print("\(self.dynamicType): Internal error while sending request:\n\(error)")
+                print("\(type(of: self)): Internal error while sending request:\n\(error)")
                 completion(.Failure(error:.NetworkError))
             } else if let data = res.result.value {
-                print("\(self.dynamicType): Received \(data.dataSize) of data.")
+                print("\(type(of: self)): Received \(data.dataSize) of data.")
                 if let response = type.init(request: request, body: data) {
                     completion(ResponseResult.Success(response: response))
                 }
                 else {
-                    print("\(self.dynamicType): Specified response type couldn't handle '\(type.kind)' response '\(type)' has '\(type.kind)'.")
+                    print("\(type(of: self)): Specified response type couldn't handle '\(type.kind)' response '\(type)' has '\(type.kind)'.")
                     completion(.Failure(error:.InvalidResponseKind))
                 }
             } else {
-                print("\(self.dynamicType): Couldn't get any response.")
+                print("\(type(of: self)): Couldn't get any response.")
                 completion(.Failure(error: .FailedRequest))
             }
             }
         case .String: return aRequest.responseString {res in
             if let error = res.result.error {
-                print("\(self.dynamicType): Internal error while sending request:\n\(error)")
+                print("\(type(of: self)): Internal error while sending request:\n\(error)")
                 completion(.Failure(error:.NetworkError))
             } else if let string = res.result.value {
-                print("\(self.dynamicType): Received string : \(string).")
+                print("\(type(of: self)): Received string : \(string).")
                 if let response = type.init(request: request, body: string) {
                     completion(ResponseResult.Success(response: response))
                 }
                 else {
-                   print("\(self.dynamicType): Specified response type couldn't handle '\(type.kind)' response '\(type)' has '\(type.kind)'.")
+                    print("\(type(of: self)): Specified response type couldn't handle '\(type.kind)' response '\(type)' has '\(type.kind)'.")
                     completion(.Failure(error:.InvalidResponseKind))
                 }
             } else {
-                print("\(self.dynamicType): Couldn't get any response.")
+                print("\(type(of: self)): Couldn't get any response.")
                 completion(.Failure(error: .FailedRequest))
             }
             }
