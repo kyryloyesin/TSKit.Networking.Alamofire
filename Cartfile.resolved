@@ -1,0 +1,3 @@
+github "Alamofire/Alamofire" "4.7.3"
+github "adya/TSKit.Core" "1.0.3"
+github "adya/TSKit.Networking" "1.0.0"
