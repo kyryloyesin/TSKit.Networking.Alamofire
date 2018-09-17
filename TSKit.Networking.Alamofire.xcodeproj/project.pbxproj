@@ -10,6 +10,9 @@
 		0057DDBD2013A737002B8429 /* TSKit_Networking_Alamofire.h in Headers */ = {isa = PBXBuildFile; fileRef = 0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0057DDC42013A7BC002B8429 /* TSKit_Networking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */; };
 		0057DDCA2013A93E002B8429 /* AlamofireRequestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */; };
+		00BC01CA21502DC90009290B /* Cartfile in Resources */ = {isa = PBXBuildFile; fileRef = 00BC01C921502DC90009290B /* Cartfile */; };
+		00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */; };
+		00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CE21502E020009290B /* AlamofireRequestCall.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -18,6 +21,9 @@
 		0057DDBC2013A737002B8429 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Networking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestManager.swift; sourceTree = "<group>"; };
+		00BC01C921502DC90009290B /* Cartfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Cartfile; sourceTree = SOURCE_ROOT; };
+		00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCallBuilder.swift; sourceTree = "<group>"; };
+		00BC01CE21502E020009290B /* AlamofireRequestCall.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCall.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				0057DDC62013A93E002B8429 /* Sources */,
+				00BC01C921502DC90009290B /* Cartfile */,
 				0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */,
 				0057DDBC2013A737002B8429 /* Info.plist */,
 			);
@@ -70,6 +77,8 @@
 		0057DDC62013A93E002B8429 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */,
+				00BC01CE21502E020009290B /* AlamofireRequestCall.swift */,
 				0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */,
 			);
 			path = Sources;
@@ -144,6 +153,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00BC01CA21502DC90009290B /* Cartfile in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -154,6 +164,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */,
+				00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */,
 				0057DDCA2013A93E002B8429 /* AlamofireRequestManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

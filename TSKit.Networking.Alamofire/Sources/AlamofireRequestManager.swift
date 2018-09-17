@@ -81,7 +81,7 @@ public class AlamofireRequestManager: AnyRequestManager {
     }
     
     private func executeRequest(_ aRequest: Alamofire.DataRequest?,
-                                withRequest request: TSKit_Networking.Request,
+                                withRequest request: TSKit_Networking.AnyRequest,
                                 responseType: AnyResponse.Type,
                                 queue: DispatchQueue,
                                 progressCompletion: RequestProgressCompletion? = nil,
@@ -93,7 +93,7 @@ public class AlamofireRequestManager: AnyRequestManager {
             }
             return
         }
-        if let baseUrl = request.baseUrl ?? self.baseUrl {
+        if let baseUrl = request.host ?? self.baseUrl {
             print("\(type(of: self)): Request resolved to: \(baseUrl)")
         } else {
             print("\(type(of: self)): Warning: base URL wasn't defined for request\n\(request.description)")
@@ -186,22 +186,22 @@ private extension AlamofireRequestManager {
         case https = "https://"
     }
     
-    func constructUrl(withRequest request: TSKit_Networking.Request) -> String? {
-        guard !request.url.contains(ApplicationLayerProtocol.http.rawValue) &&
-            !request.url.contains(ApplicationLayerProtocol.https.rawValue) else {
-                return request.url
+    func constructUrl(withRequest request: TSKit_Networking.AnyRequest) -> String? {
+        guard !request.path.contains(ApplicationLayerProtocol.http.rawValue) &&
+            !request.path.contains(ApplicationLayerProtocol.https.rawValue) else {
+                return request.path
         }
         
-        guard let baseUrl = (request.baseUrl ?? self.baseUrl) else {
+        guard let baseUrl = (request.host ?? self.baseUrl) else {
             print("\(type(of: self)): Neither default baseUrl nor request's baseUrl had been specified.")
             return nil
         }
         
-        let url = request.url.hasPrefix("/") ? request.url : "/\(request.url)"
+        let url = request.path.hasPrefix("/") ? request.path : "/\(request.path)"
         return "\(baseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/")))\(url)"
     }
     
-    func constructHeaders(withRequest request: TSKit_Networking.Request) -> [String : String]? {
+    func constructHeaders(withRequest request: TSKit_Networking.AnyRequest) -> [String : String]? {
         var headers = self.defaultHeaders
         if let customHeaders = request.headers {
             if headers == nil {
@@ -217,7 +217,7 @@ private extension AlamofireRequestManager {
 
 // MARK: - Constructing regular Alamofire request
 private extension AlamofireRequestManager {
-    func createRegularRequest(_ request: TSKit_Networking.Request,
+    func createRegularRequest(_ request: TSKit_Networking.AnyRequest,
                               responseType type: AnyResponse.Type,
                               completion: AnyResponseResultCompletion) -> Alamofire.DataRequest? {
         guard let url = self.constructUrl(withRequest: request) else {
@@ -357,7 +357,7 @@ private extension AlamofireRequestManager {
 private extension AlamofireRequestManager {
     
     func appendResponse(_ aRequest: Alamofire.DataRequest,
-                        request: TSKit_Networking.Request,
+                        request: TSKit_Networking.AnyRequest,
                         responseType: AnyResponse.Type,
                         queue: DispatchQueue,
                         progressCompletion: RequestProgressCompletion? = nil,
@@ -490,6 +490,14 @@ private extension Alamofire.HTTPMethod {
         }
     }
 }
+
+/// An opaque object used to cancel started routine.
+protocol AnyCancellationToken: class {
+
+    /// Cancels routine associated with token.
+    func cancel()
+}
+
 
 private class AlamofireRequestToken: AnyCancellationToken {
     
