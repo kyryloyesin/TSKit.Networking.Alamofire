@@ -9,10 +9,14 @@
 /* Begin PBXBuildFile section */
 		0057DDBD2013A737002B8429 /* TSKit_Networking_Alamofire.h in Headers */ = {isa = PBXBuildFile; fileRef = 0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0057DDC42013A7BC002B8429 /* TSKit_Networking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */; };
-		0057DDCA2013A93E002B8429 /* AlamofireRequestManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */; };
+		0057DDCA2013A93E002B8429 /* AlamofireNetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */; };
+		007AFF0B216BE88C00C96933 /* TSKit_Injection.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */; };
+		007AFF0D216BE88C00C96933 /* TSKit_Log.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0C216BE88C00C96933 /* TSKit_Log.framework */; };
 		00BC01CA21502DC90009290B /* Cartfile in Resources */ = {isa = PBXBuildFile; fileRef = 00BC01C921502DC90009290B /* Cartfile */; };
 		00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */; };
 		00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CE21502E020009290B /* AlamofireRequestCall.swift */; };
+		2D9E6357022DFE7C303703CD /* AlamofireNetworkServiceError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */; };
+		2D9E64794E7C92FA246F9769 /* RequestWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -20,10 +24,14 @@
 		0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TSKit_Networking_Alamofire.h; sourceTree = "<group>"; };
 		0057DDBC2013A737002B8429 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Networking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestManager.swift; sourceTree = "<group>"; };
+		0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireNetworkService.swift; sourceTree = "<group>"; };
+		007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Injection.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		007AFF0C216BE88C00C96933 /* TSKit_Log.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Log.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		00BC01C921502DC90009290B /* Cartfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Cartfile; sourceTree = SOURCE_ROOT; };
 		00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCallBuilder.swift; sourceTree = "<group>"; };
 		00BC01CE21502E020009290B /* AlamofireRequestCall.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCall.swift; sourceTree = "<group>"; };
+		2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RequestWrapper.swift; sourceTree = "<group>"; };
+		2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireNetworkServiceError.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -31,6 +39,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				007AFF0B216BE88C00C96933 /* TSKit_Injection.framework in Frameworks */,
+				007AFF0D216BE88C00C96933 /* TSKit_Log.framework in Frameworks */,
 				0057DDC42013A7BC002B8429 /* TSKit_Networking.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -69,6 +79,8 @@
 		0057DDC32013A7BC002B8429 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */,
+				007AFF0C216BE88C00C96933 /* TSKit_Log.framework */,
 				0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */,
 			);
 			name = Frameworks;
@@ -77,9 +89,11 @@
 		0057DDC62013A93E002B8429 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
-				00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */,
+				0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */,
 				00BC01CE21502E020009290B /* AlamofireRequestCall.swift */,
-				0057DDC82013A93E002B8429 /* AlamofireRequestManager.swift */,
+				00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */,
+				2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */,
+				2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -166,7 +180,9 @@
 			files = (
 				00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */,
 				00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */,
-				0057DDCA2013A93E002B8429 /* AlamofireRequestManager.swift in Sources */,
+				0057DDCA2013A93E002B8429 /* AlamofireNetworkService.swift in Sources */,
+				2D9E6357022DFE7C303703CD /* AlamofireNetworkServiceError.swift in Sources */,
+				2D9E64794E7C92FA246F9769 /* RequestWrapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

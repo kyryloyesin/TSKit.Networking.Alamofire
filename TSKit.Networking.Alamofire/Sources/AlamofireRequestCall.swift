@@ -10,25 +10,32 @@
 
 import Dispatch
 import TSKit_Networking
+import Alamofire
 
 class AlamofireRequestCall: AnyRequestCall {
 
     /// `Request` to be called.
     public let request: AnyRequest
 
-    var token: AnyCancellationToken?
+    var token: Alamofire.Request?
 
     let queue: DispatchQueue
 
     let handlers: [ResponseHandler]
+    
+    let progress: [ProgressClosure]
 
     /// - Parameter request: Configured Request object.
     /// - Parameter responseType: Type of expected Response object.
     /// - Parameter completion: Closure to be called upon receiving response.
-    init(request: AnyRequest, queue: DispatchQueue = DispatchQueue.global(), handlers: [ResponseHandler]) {
+    init(request: AnyRequest,
+         queue: DispatchQueue,
+         handlers: [ResponseHandler],
+         progressClosures: [ProgressClosure]) {
         self.request = request
         self.queue = queue
         self.handlers = handlers
+        self.progress = progressClosures
     }
 
     public func cancel() {
@@ -39,7 +46,11 @@ class AlamofireRequestCall: AnyRequestCall {
 
 struct ResponseHandler {
 
-    let statuses: [UInt]
+    let statuses: Set<UInt>
+
+    let responseType: BaseResponse.Type
 
     let handler: AnyResponseResultCompletion
 }
+
+typealias ProgressClosure = (Progress) -> Void
