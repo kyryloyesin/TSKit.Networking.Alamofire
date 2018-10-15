@@ -16,9 +16,10 @@ import TSKit_Log
  - Requires: Alamofire
  - Requires: TSKit.Networking
  
- - Version:    3.0
- - Since:      10/26/2016
- - Author:     AdYa
+ - Version:     3.0
+ - Date:        10/13/2018
+ - Since:       10/26/2016
+ - Author:      Arkadii Hlushchevskyi
  */
 public class AlamofireNetworkService: AnyNetworkService {
 
