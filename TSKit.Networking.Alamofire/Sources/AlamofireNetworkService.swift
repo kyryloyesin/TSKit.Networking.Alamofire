@@ -33,6 +33,8 @@ public class AlamofireNetworkService: AnyNetworkService {
             manager.backgroundCompletionHandler = newValue
         }
     }
+    
+    public var interceptors: [AnyNetworkServiceInterceptor]?
 
     private let manager: Alamofire.SessionManager
 
@@ -57,7 +59,7 @@ public class AlamofireNetworkService: AnyNetworkService {
 
     }
 
-    public func builder(for request: AnyRequest) -> AnyRequestCallBuilder {
+    public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
         return AlamofireRequestCallBuilder(request: request)
     }
 
@@ -155,7 +157,7 @@ private extension AlamofireNetworkService {
         let headers = constructHeaders(withRequest: call.request)
         let url = constructUrl(withRequest: call.request)
 
-        if let request = call.request as? AnyMultipartRequest {
+        if let request = call.request as? AnyMultipartRequestable {
             let wrapper = RequestWrapper()
             manager.upload(multipartFormData: { [weak self] formData in
                 request.parameters?.forEach {
@@ -250,7 +252,7 @@ private extension AlamofireNetworkService {
 // MARK: - Constructing request properties.
 private extension AlamofireNetworkService {
 
-    func constructUrl(withRequest request: AnyRequest) -> URL {
+    func constructUrl(withRequest request: AnyRequestable) -> URL {
         guard let url = URL(string: (request.host ?? configuration.host)) else {
             let message = "Neither default `host` nor request's `host` had been specified."
             log?.severe(message)
@@ -259,7 +261,7 @@ private extension AlamofireNetworkService {
         return url.appendingPathComponent(request.path)
     }
 
-    func constructHeaders(withRequest request: AnyRequest) -> [String : String] {
+    func constructHeaders(withRequest request: AnyRequestable) -> [String : String] {
         return (defaultHeaders ?? [:]) + (request.headers ?? [:])
     }
 }
@@ -416,26 +418,34 @@ private extension AlamofireNetworkService {
             return
         }
         let status = UInt(httpResponse.statusCode)
-
-        call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
-                     .forEach {
-                         if let error = error {
-                             log?.debug("Request \(call.request) failed with error: \(error).")
-                             $0.handler(.failure(error: error))
-                             completion(.failure(error: error))
-                             return
-                         }
-                         guard let response = $0.responseType.init(request: call.request,
-                                                                   response: httpResponse,
-                                                                   body: value) else {
-                             log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")
-                             let error = AlamofireNetworkServiceError.invalidResponse
-                             $0.handler(.failure(error: error))
-                             completion(.failure(error: error))
-                             return
-                         }
-                         $0.handler(.success(response: response))
-                     }
+        
+        let validHandlers = call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
+        let shouldProcess =  { self.interceptors?.reduce(true) { $0 && $1.intercept(call: call, response: httpResponse, body: value) } ?? true }
+        
+        guard validHandlers.isEmpty || shouldProcess() else {
+            log?.verbose("At least one interceptor has blocked response for \(call.request).")
+            let error = NetworkServiceError.skipped
+            completion(.failure(error: error))
+            validHandlers.forEach { $0.handler(.failure(error: error)) }
+            return
+        }
+        
+        validHandlers.forEach {
+            if let error = error {
+                log?.debug("Request \(call.request) failed with error: \(error).")
+                $0.handler(.failure(error: error))
+                completion(.failure(error: error))
+                return
+            }
+            guard let response = $0.responseType.init(response: httpResponse, body: value) else {
+                log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")
+                let error = AlamofireNetworkServiceError.invalidResponse
+                $0.handler(.failure(error: error))
+                completion(.failure(error: error))
+                return
+            }
+            $0.handler(.success(response: response))
+        }
     }
 }
 

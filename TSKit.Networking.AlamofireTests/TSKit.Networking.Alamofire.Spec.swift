@@ -90,7 +90,7 @@ class AlamofireNetworkServiceSepc: QuickSpec {
     }
 }
 
-private struct SimpleRequest: AnyRequest {
+private struct SimpleRequest: AnyRequestable {
     
     let method = RequestMethod.get
     
@@ -102,30 +102,30 @@ private struct SimpleRequest: AnyRequest {
     
 }
 
-private struct FailingResponse: BaseResponse {
+private struct FailingResponse: AnyResponse {
     
     static let kind = ResponseKind.json
     
-    let request: AnyRequest
+    let request: AnyRequestable
     
     let response: HTTPURLResponse
     
-    init?(request: AnyRequest, response: HTTPURLResponse, body: Any?) {
+    init?(request: AnyRequestable, response: HTTPURLResponse, body: Any?) {
         self.request = request
         self.response = response
     }
     
 }
 
-private struct SuccessResponse: BaseResponse {
+private struct SuccessResponse: AnyResponse {
     
     static let kind = ResponseKind.json
     
-    let request: AnyRequest
+    let request: AnyRequestable
     
     let response: HTTPURLResponse
     
-    init?(request: AnyRequest, response: HTTPURLResponse, body: Any?) {
+    init?(request: AnyRequestable, response: HTTPURLResponse, body: Any?) {
         self.request = request
         self.response = response
     }

@@ -15,7 +15,7 @@ import Alamofire
 class AlamofireRequestCall: AnyRequestCall {
 
     /// `Request` to be called.
-    public let request: AnyRequest
+    public let request: AnyRequestable
 
     var token: Alamofire.Request?
 
@@ -28,7 +28,7 @@ class AlamofireRequestCall: AnyRequestCall {
     /// - Parameter request: Configured Request object.
     /// - Parameter responseType: Type of expected Response object.
     /// - Parameter completion: Closure to be called upon receiving response.
-    init(request: AnyRequest,
+    init(request: AnyRequestable,
          queue: DispatchQueue,
          handlers: [ResponseHandler],
          progressClosures: [ProgressClosure]) {
@@ -48,7 +48,7 @@ struct ResponseHandler {
 
     let statuses: Set<UInt>
 
-    let responseType: BaseResponse.Type
+    let responseType: AnyResponse.Type
 
     let handler: AnyResponseResultCompletion
 }

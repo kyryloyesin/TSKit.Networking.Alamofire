@@ -3,7 +3,7 @@ import TSKit_Networking
 
 public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
 
-    private let request: AnyRequest
+    private let request: AnyRequestable
 
     private var queue: DispatchQueue = DispatchQueue.global()
 
@@ -11,7 +11,7 @@ public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
 
     private var progressClosures: [(Progress) -> Void] = []
 
-    public required init(request: AnyRequest) {
+    public required init(request: AnyRequestable) {
         self.request = request
     }
 
@@ -22,21 +22,21 @@ public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
 
     public func response<ResponseType, StatusSequenceType>(_ response: ResponseType.Type,
                                                            forStatuses statuses: StatusSequenceType,
-                                                           handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: BaseResponse, StatusSequenceType: Sequence, StatusSequenceType.Element == UInt {
+                                                           handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: AnyResponse, StatusSequenceType: Sequence, StatusSequenceType.Element == UInt {
         addResponse(response, forStatuses: Array(statuses), handler: handler)
         return self
     }
 
     public func response<ResponseType>(_ response: ResponseType.Type,
                                        forStatuses statuses: UInt...,
-                                       handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: BaseResponse {
+                                       handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: AnyResponse {
         addResponse(response, forStatuses: statuses, handler: handler)
         return self
     }
 
     /// Attaches handler for any response
     public func response<ResponseType>(_ response: ResponseType.Type,
-                                       handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: BaseResponse {
+                                       handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: AnyResponse {
         return self.response(response, forStatuses: 100..<600, handler: handler)
     }
 
@@ -54,7 +54,7 @@ public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
 
     private func addResponse<ResponseType>(_ response: ResponseType.Type,
                                            forStatuses statuses: [UInt],
-                                           handler: @escaping ResponseResultCompletion<ResponseType>) where ResponseType: BaseResponse {
+                                           handler: @escaping ResponseResultCompletion<ResponseType>) where ResponseType: AnyResponse {
         handlers.append(ResponseHandler(statuses: Set(statuses), responseType: response, handler: { res in
             switch res {
             case .success(let response): handler(.success(response: response as! ResponseType))
