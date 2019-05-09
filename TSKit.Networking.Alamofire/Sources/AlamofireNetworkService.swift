@@ -1,26 +1,27 @@
+/// - Since: 01/20/2018
+/// - Author: Arkadii Hlushchevskyi
+/// - Copyright: © 2018. Arkadii Hlushchevskyi.
+/// - Seealso: https://github.com/adya/TSKit.Networking.Alamofire/blob/master/LICENSE.md
+/// - Requires: iOS 8.0+
+/// - Requires: Alamofire
+/// - Requires: TSKit.Core
+/// - Requires: TSKit.Networking
+/// - Requires: TSKit.Injection
+/// - Requires: TSKit.Log
+
 import Alamofire
 import TSKit_Networking
 import TSKit_Injection
 import TSKit_Core
 import TSKit_Log
 
-/**
- RequestManager is part of TSNetworking layer. It provides a way to do request calls defined by Request objects.
- Key features:
- 1. It is designed to be used directly without any sublasses.
- 2. Highly configurable via configuration object.
- 3. Sync multiple requests.
- 4. Simple and obvious way to create request calls.
- 
- - Requires: iOS 8.0+
- - Requires: Alamofire
- - Requires: TSKit.Networking
- 
- - Version:     3.0
- - Date:        10/13/2018
- - Since:       10/26/2016
- - Author:      Arkadii Hlushchevskyi
- */
+
+/// RequestManager is part of TSNetworking layer. It provides a way to do request calls defined by Request objects.
+/// Key features:
+/// 1. It is designed to be used directly without any sublasses.
+/// 2. Highly configurable via configuration object.
+/// 3. Sync multiple requests.
+/// 4. Simple and obvious way to create request calls.
 public class AlamofireNetworkService: AnyNetworkService {
 
     private let log = try? Injector.inject(AnyLog.self, for: AnyNetworkService.self)
@@ -52,11 +53,9 @@ public class AlamofireNetworkService: AnyNetworkService {
     }
 
     public required init(configuration: AnyNetworkServiceConfiguration) {
-        let sessionConfiguration = configuration.sessionConfiguration ?? .default
-        manager = Alamofire.SessionManager(configuration: sessionConfiguration)
+        manager = Alamofire.SessionManager(configuration: configuration.sessionConfiguration)
         manager.startRequestsImmediately = false
         self.configuration = configuration
-
     }
 
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
@@ -313,8 +312,10 @@ private extension AlamofireNetworkService {
     func appendProgress(_ aRequest: Alamofire.DownloadRequest,
                         queue: DispatchQueue,
                         progressCompletion: RequestProgressCompletion? = nil) -> Self {
-        aRequest.downloadProgress(queue: queue) { (progress) in
-            progressCompletion?(progress)
+        if let completion = progressCompletion {
+            aRequest.downloadProgress(queue: queue) { (progress) in
+                completion(progress)
+            }
         }
         return self
     }

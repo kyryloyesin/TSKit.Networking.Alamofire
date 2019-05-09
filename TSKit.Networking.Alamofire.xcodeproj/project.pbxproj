@@ -21,7 +21,6 @@
 		0057DDCA2013A93E002B8429 /* AlamofireNetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */; };
 		007AFF0B216BE88C00C96933 /* TSKit_Injection.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */; };
 		007AFF0D216BE88C00C96933 /* TSKit_Log.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0C216BE88C00C96933 /* TSKit_Log.framework */; };
-		00B9ACB521791CE9002C6500 /* NetworkServiceError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B9ACB421791CE9002C6500 /* NetworkServiceError.swift */; };
 		00BC01CA21502DC90009290B /* Cartfile in Resources */ = {isa = PBXBuildFile; fileRef = 00BC01C921502DC90009290B /* Cartfile */; };
 		00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */; };
 		00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CE21502E020009290B /* AlamofireRequestCall.swift */; };
@@ -69,7 +68,6 @@
 		0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireNetworkService.swift; sourceTree = "<group>"; };
 		007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Injection.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		007AFF0C216BE88C00C96933 /* TSKit_Log.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Log.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		00B9ACB421791CE9002C6500 /* NetworkServiceError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkServiceError.swift; sourceTree = "<group>"; };
 		00BC01C921502DC90009290B /* Cartfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Cartfile; sourceTree = SOURCE_ROOT; };
 		00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCallBuilder.swift; sourceTree = "<group>"; };
 		00BC01CE21502E020009290B /* AlamofireRequestCall.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCall.swift; sourceTree = "<group>"; };
@@ -163,7 +161,6 @@
 				00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */,
 				2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */,
 				2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */,
-				00B9ACB421791CE9002C6500 /* NetworkServiceError.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -235,6 +232,7 @@
 					};
 					0057DDB72013A737002B8429 = {
 						CreatedOnToolsVersion = 9.2;
+						LastSwiftMigration = 1020;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -290,7 +288,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */,
-				00B9ACB521791CE9002C6500 /* NetworkServiceError.swift in Sources */,
 				00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */,
 				0057DDCA2013A93E002B8429 /* AlamofireNetworkService.swift in Sources */,
 				2D9E6357022DFE7C303703CD /* AlamofireNetworkServiceError.swift in Sources */,
@@ -487,7 +484,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.glar.tskit.networking.alamofire;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = NO;
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -510,7 +507,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.glar.tskit.networking.alamofire;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = NO;
-				SWIFT_VERSION = 4.0;
+				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
