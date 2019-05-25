@@ -24,7 +24,7 @@ import TSKit_Log
 /// 4. Simple and obvious way to create request calls.
 public class AlamofireNetworkService: AnyNetworkService {
 
-    private let log = try? Injector.inject(AnyLog.self, for: AnyNetworkService.self)
+    private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
 
     public var backgroundSessionCompletionHandler: (() -> Void)? {
         get {
