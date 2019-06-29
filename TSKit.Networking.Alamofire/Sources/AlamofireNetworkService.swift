@@ -68,6 +68,11 @@ public class AlamofireNetworkService: AnyNetworkService {
                         completion: RequestCompletion? = nil) {
         let calls = requestCalls.map(supportedCall)
         var capturedResult: EmptyResponseResult = .success(response: ())
+        guard !calls.isEmpty else {
+            completion?(capturedResult)
+            return
+        }
+        
         switch option {
         case .executeAsynchronously(let ignoreFailures):
             let group = completion != nil ? DispatchGroup() : nil
