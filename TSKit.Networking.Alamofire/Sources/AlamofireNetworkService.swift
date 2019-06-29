@@ -101,7 +101,9 @@ public class AlamofireNetworkService: AnyNetworkService {
                     }
                 }
             }
-            group?.notify(queue: queue) { completion?(capturedResult) }
+            group?.notify(queue: queue) {
+                completion?(capturedResult)
+            }
 
         case .executeSynchronously(let ignoreFailures):
 
@@ -121,7 +123,9 @@ public class AlamofireNetworkService: AnyNetworkService {
                     }
 
                     executeNext(calls[nextIndex], at: nextIndex)
-                }.onReady { $0.resume() }
+                }.onReady {
+                    $0.resume()
+                }
                  .onFail {
                      if !ignoreFailures,
                         case .success = capturedResult {
@@ -154,7 +158,7 @@ private extension AlamofireNetworkService {
     /// - Parameter completion: A closure to be called upon receiving response.
     /// - Returns: Constructed `Alamofire`'s request object.
     func process(_ call: AlamofireRequestCall,
-                 _ completion: @escaping (EmptyResponseResult) -> Void) -> RequestWrapper {
+                 _ completion: @escaping RequestCompletion) -> RequestWrapper {
 
         let method = HTTPMethod(call.request.method)
         let encoding = call.request.encoding.alamofireEncoding
@@ -199,12 +203,7 @@ private extension AlamofireNetworkService {
                                case .success(let request, _, _):
                                    self?.appendProgress(request, queue: call.queue) { progress in
                                        call.progress.forEach { $0(progress) }
-                                   }.appendResponse(request, call: call) {
-                                       switch $0 {
-                                       case .success: completion(.success(response: ()))
-                                       case .failure(let error): completion(.failure(error: error))
-                                       }
-                                   }
+                                   }.appendResponse(request, call: call, completion: completion)
                                    wrapper.request = request
                                case .failure(let error):
                                    wrapper.error = error
@@ -227,12 +226,7 @@ private extension AlamofireNetworkService {
                                            to: destination)
             appendProgress(request, queue: call.queue) { progress in
                 call.progress.forEach { $0(progress) }
-            }.appendResponse(request, call: call) {
-                switch $0 {
-                case .success: completion(.success(response: ()))
-                case .failure(let error): completion(.failure(error: error))
-                }
-            }
+            }.appendResponse(request, call: call, completion: completion)
             return RequestWrapper(request)
         } else {
             let request = manager.request(url,
@@ -242,12 +236,7 @@ private extension AlamofireNetworkService {
                                           headers: headers)
             appendProgress(request, queue: call.queue) { progress in
                 call.progress.forEach { $0(progress) }
-            }.appendResponse(request, call: call) {
-                switch $0 {
-                case .success: completion(.success(response: ()))
-                case .failure(let error): completion(.failure(error: error))
-                }
-            }
+            }.appendResponse(request, call: call, completion: completion)
             return RequestWrapper(request)
         }
     }
@@ -338,35 +327,63 @@ private extension AlamofireNetworkService {
     @discardableResult
     func appendResponse(_ aRequest: Alamofire.DataRequest,
                         call: AlamofireRequestCall,
-                        completion: @escaping AnyResponseResultCompletion) -> Self {
+                        completion: @escaping RequestCompletion) -> Self {
+        var result: EmptyResponseResult!
+        
+        /// Captures success if at least one handler returned success otherwise first error.
+        func setResult(_ localResult: EmptyResponseResult) {
+            guard result != nil else {
+                result = localResult
+                return
+            }
+            
+            guard case .success = localResult,
+                  case .failure = result! else { return }
+            
+            result = localResult
+        }
+        
+        let handlingGroup = DispatchGroup()
+        (0..<4).forEach { _ in handlingGroup.enter() } // enter group for each scheduled response.
+        handlingGroup.notify(queue: call.queue) {
+            completion(result)
+        }
         aRequest.responseData(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: $0.value,
-                                 kind: .data,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: $0.value,
+                                             kind: .data,
+                                             call: call)
+            setResult(result)
+            handlingGroup.leave()
         }.responseJSON(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: $0.value,
-                                 kind: .json,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: $0.value,
+                                             kind: .json,
+                                             call: call)
+            setResult(result)
+            handlingGroup.leave()
         }.responseString(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: $0.value,
-                                 kind: .string,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: $0.value,
+                                             kind: .string,
+                                             call: call)
+            setResult(result)
+            handlingGroup.leave()
         }.response(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: nil,
-                                 kind: .empty,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: nil,
+                                             kind: .empty,
+                                             call: call)
+            setResult(result)
+            handlingGroup.leave()
         }
         return self
     }
@@ -374,39 +391,67 @@ private extension AlamofireNetworkService {
     @discardableResult
     func appendResponse(_ aRequest: Alamofire.DownloadRequest,
                         call: AlamofireRequestCall,
-                        completion: @escaping AnyResponseResultCompletion) -> Self {
+                        completion: @escaping RequestCompletion) -> Self {
+        var result: EmptyResponseResult!
+        
+        /// Captures success if at least one handler returned success otherwise first error.
+        func setResult(_ localResult: EmptyResponseResult) {
+            guard result != nil else {
+                result = localResult
+                return
+            }
+            
+            guard case .success = localResult,
+                case .failure = result! else { return }
+            
+            result = localResult
+        }
+        
+        let handlingGroup = DispatchGroup()
+        (0..<4).forEach { _ in handlingGroup.enter() } // enter group for each scheduled response.
+        handlingGroup.notify(queue: call.queue) {
+            completion(result)
+        }
         aRequest.responseData(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: $0.value,
-                                 kind: .data,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: $0.value,
+                                             kind: .data,
+                                             call: call)
             try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
+            setResult(result)
+            handlingGroup.leave()
         }.responseJSON(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: $0.value,
-                                 kind: .json,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: $0.value,
+                                             kind: .json,
+                                             call: call)
             try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
+            setResult(result)
+            handlingGroup.leave()
         }.responseString(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: $0.value,
-                                 kind: .string,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: $0.value,
+                                             kind: .string,
+                                             call: call)
             try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
+            setResult(result)
+            handlingGroup.leave()
         }.response(queue: call.queue) { [weak self] in
-            self?.handleResponse($0.response,
-                                 error: $0.error,
-                                 value: nil,
-                                 kind: .empty,
-                                 call: call,
-                                 completion: completion)
+            guard let self = self else { return }
+            let result = self.handleResponse($0.response,
+                                             error: $0.error,
+                                             value: nil,
+                                             kind: .empty,
+                                             call: call)
             try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
+            setResult(result)
+            handlingGroup.leave()
         }
         return self
     }
@@ -415,43 +460,46 @@ private extension AlamofireNetworkService {
                                 error: Error?,
                                 value: Any?,
                                 kind: ResponseKind,
-                                call: AlamofireRequestCall,
-                                completion: @escaping AnyResponseResultCompletion) {
+                                call: AlamofireRequestCall) -> EmptyResponseResult {
         guard let httpResponse = response else {
             log?.severe("HTTP Response was not specified. Response will be ignored.")
             let error = AlamofireNetworkServiceError.missingHttpResponse
-            completion(.failure(error: error))
-            return
+            return .failure(error: error)
         }
         let status = UInt(httpResponse.statusCode)
         
         let validHandlers = call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
         let shouldProcess =  { self.interceptors?.reduce(true) { $0 && $1.intercept(call: call, response: httpResponse, body: value) } ?? true }
         
-        guard validHandlers.isEmpty || shouldProcess() else {
+        guard shouldProcess() else {
             log?.verbose("At least one interceptor has blocked response for \(call.request).")
             let error = NetworkServiceError.skipped
-            completion(.failure(error: error))
             validHandlers.forEach { $0.handler(.failure(error: error)) }
-            return
+            return .failure(error: error)
         }
-        
+        // Capture first error result or return success.
+        var result: EmptyResponseResult = .success(response: ())
         validHandlers.forEach {
             if let error = error {
                 log?.debug("Request \(call.request) failed with error: \(error).")
                 $0.handler(.failure(error: error))
-                completion(.failure(error: error))
-                return
+                if case .success = result {
+                    result = .failure(error: error)
+                }
             }
             guard let response = $0.responseType.init(response: httpResponse, body: value) else {
                 log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")
                 let error = AlamofireNetworkServiceError.invalidResponse
                 $0.handler(.failure(error: error))
-                completion(.failure(error: error))
+                if case .success = result {
+                    result = .failure(error: error)
+                }
                 return
             }
             $0.handler(.success(response: response))
         }
+        
+        return result
     }
 }
 
