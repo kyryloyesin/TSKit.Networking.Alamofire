@@ -27,13 +27,13 @@ public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
 
     public func response<ResponseType, StatusSequenceType>(_ response: ResponseType.Type,
                                                            forStatuses statuses: StatusSequenceType,
-                                                           handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: AnyResponse, StatusSequenceType: Sequence, StatusSequenceType.Element == UInt {
+                                                           handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: AnyResponse, StatusSequenceType: Sequence, StatusSequenceType.Element == Int {
         addResponse(response, forStatuses: Array(statuses), handler: handler)
         return self
     }
 
     public func response<ResponseType>(_ response: ResponseType.Type,
-                                       forStatuses statuses: UInt...,
+                                       forStatuses statuses: Int...,
                                        handler: @escaping ResponseResultCompletion<ResponseType>) -> Self where ResponseType: AnyResponse {
         addResponse(response, forStatuses: statuses, handler: handler)
         return self
@@ -58,7 +58,7 @@ public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
     }
 
     private func addResponse<ResponseType>(_ response: ResponseType.Type,
-                                           forStatuses statuses: [UInt],
+                                           forStatuses statuses: [Int],
                                            handler: @escaping ResponseResultCompletion<ResponseType>) where ResponseType: AnyResponse {
         handlers.append(ResponseHandler(statuses: Set(statuses), responseType: response, handler: { res in
             switch res {

@@ -113,7 +113,7 @@ public class AlamofireNetworkService: AnyNetworkService {
                        case .failure = result,
                        case .success = capturedResult {
                         completion?(result)
-
+                        return
                     }
 
                     let nextIndex = index + 1
@@ -348,7 +348,8 @@ private extension AlamofireNetworkService {
         handlingGroup.notify(queue: call.queue) {
             completion(result)
         }
-        aRequest.responseData(queue: call.queue) { [weak self] in
+        aRequest.validate(statusCode: call.request.statusCodes)
+         .responseData(queue: call.queue) { [weak self] in
             guard let self = self else { return }
             let result = self.handleResponse($0.response,
                                              error: $0.error,
@@ -412,7 +413,8 @@ private extension AlamofireNetworkService {
         handlingGroup.notify(queue: call.queue) {
             completion(result)
         }
-        aRequest.responseData(queue: call.queue) { [weak self] in
+        aRequest.validate(statusCode: call.request.statusCodes)
+        .responseData(queue: call.queue) { [weak self] in
             guard let self = self else { return }
             let result = self.handleResponse($0.response,
                                              error: $0.error,
@@ -466,26 +468,42 @@ private extension AlamofireNetworkService {
             let error = AlamofireNetworkServiceError.missingHttpResponse
             return .failure(error: error)
         }
-        let status = UInt(httpResponse.statusCode)
+        let status = httpResponse.statusCode
         
         let validHandlers = call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
-        let shouldProcess =  { self.interceptors?.reduce(true) { $0 && $1.intercept(call: call, response: httpResponse, body: value) } ?? true }
+        let shouldProcess = self.interceptors?.reduce(true) { $0 && $1.intercept(call: call, response: httpResponse, body: value) } ?? true
         
-        guard shouldProcess() else {
-            log?.verbose("At least one interceptor has blocked response for \(call.request).")
+        guard !validHandlers.isEmpty, shouldProcess else {
+            if !shouldProcess {
+                log?.verbose("At least one interceptor has blocked response for \(call.request).")
+            } else {
+                log?.verbose("Request call doesn't have valid handlers to handle request \(call.request).")
+            }
             let error = NetworkServiceError.skipped
             validHandlers.forEach { $0.handler(.failure(error: error)) }
             return .failure(error: error)
         }
+        
         // Capture first error result or return success.
         var result: EmptyResponseResult = .success(response: ())
         validHandlers.forEach {
-            if let error = error {
-                log?.debug("Request \(call.request) failed with error: \(error).")
-                $0.handler(.failure(error: error))
-                if case .success = result {
-                    result = .failure(error: error)
+            if let error = error as? AFError {
+                defer {
+                    if case .success = result {
+                        result = .failure(error: error)
+                    }
                 }
+                guard error.isResponseValidationError else {
+                    log?.debug("Request \(call.request) failed with error: \(error).")
+                    $0.handler(.failure(error: error))
+                    return
+                }
+            
+                if let response = $0.responseType.init(response: httpResponse, body: value) {
+                    $0.handler(.success(response: response))
+                }
+                return
+                
             }
             guard let response = $0.responseType.init(response: httpResponse, body: value) else {
                 log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")

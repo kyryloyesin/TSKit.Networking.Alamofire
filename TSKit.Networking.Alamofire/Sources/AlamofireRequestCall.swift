@@ -49,7 +49,7 @@ class AlamofireRequestCall: AnyRequestCall {
 
 struct ResponseHandler {
 
-    let statuses: Set<UInt>
+    let statuses: Set<Int>
 
     let responseType: AnyResponse.Type
 
