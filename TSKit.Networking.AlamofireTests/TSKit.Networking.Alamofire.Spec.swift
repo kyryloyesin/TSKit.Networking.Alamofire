@@ -254,7 +254,7 @@ private struct ForegroundConfiguration: AnyNetworkServiceConfiguration {
     
     let sessionConfiguration: URLSessionConfiguration = {
         let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 1
+        configuration.timeoutIntervalForRequest = 5
         return configuration
     }()
 }
