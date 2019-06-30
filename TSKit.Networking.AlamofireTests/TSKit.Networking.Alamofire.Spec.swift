@@ -2,15 +2,25 @@ import Quick
 import Nimble
 import TSKit_Networking
 import TSKit_Core
+import TSKit_Injection
+import TSKit_Log
 
 @testable import TSKit_Networking_Alamofire
 
 class AlamofireNetworkServiceSpec: QuickSpec {
     
-    private func makeCall<T>(for request: T.Type, handler: @escaping () -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
-        return service.builder(for: request.init())
+    private func makeCall(for request: AnyMockedRequestable.Type, handler: @escaping () -> Void) -> AnyRequestCall {
+        let request = request.init()
+        return service.builder(for: request)
                       .dispatch(to: .global())
-                      .response(SuccessResponse.self) { _ in handler() }
+                      .response(SuccessResponse.self) {
+                        switch $0 {
+                        case .success(let response): print(response)
+                        case .failure(let error): print(error)
+                        }
+                        handler()
+                        
+            }
                       .make()!
     }
     
@@ -39,6 +49,11 @@ class AlamofireNetworkServiceSpec: QuickSpec {
         let criticalTimeout: TimeInterval = 5
         describe("Foreground alamofire network service") {
             beforeEach {
+                Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
+                    let logger = Logger()
+                    logger.addWriter(PrintLogEntryWriter())
+                    return logger
+                }])
                 self.service = .init(configuration: ForegroundConfiguration())
             }
         
@@ -74,85 +89,117 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                 
                 context("with multiple status-based response handlers") {
                 
-                    var isSuccess: Bool?
-                    var receivedStatus: Int?
+                    /// Array of received responses
+                    var isSuccess: [Bool] = []
+                    /// Array of received statuses
+                    var receivedStatuses: [Int] = []
                     
                     beforeEach {
-                        isSuccess = nil
-                        receivedStatus = nil
+                        isSuccess = []
+                        receivedStatuses = []
                     }
                   
                     context("and receiving successful response") {
                         it("should handle it with only SuccessResponse") {
                             self.service.request(self.makeStatusCall(for: SuccessRequest.self) {
-                                isSuccess = $0
-                                receivedStatus = $1
+                                isSuccess.append($0)
+                                if let status = $1 {
+                                    receivedStatuses.append(status)
+                                }
                             })
-                            expect(isSuccess).toEventually(beTrue(), timeout: criticalTimeout)
-                            expect(receivedStatus).toEventually(equal(200), timeout: criticalTimeout)
+                            expect(isSuccess).toEventually(equal([true]), timeout: criticalTimeout)
+                            expect(receivedStatuses).toEventually(equal([200]), timeout: criticalTimeout)
                         }
                     }
                     
                     context("and receiving failing response") {
                         it("should handle it with only FailingResponse") {
                             self.service.request(self.makeStatusCall(for: FailingRequest.self) {
-                                isSuccess = $0
-                                receivedStatus = $1
+                                isSuccess.append($0)
+                                if let status = $1 {
+                                    receivedStatuses.append(status)
+                                }
                             })
-                            expect(isSuccess).toEventually(beFalse(), timeout: criticalTimeout)
-                            expect(receivedStatus).toEventually(equal(404), timeout: criticalTimeout)
+                            expect(isSuccess).toEventually(equal([false]), timeout: criticalTimeout)
+                            expect(receivedStatuses).toEventually(equal([404]), timeout: criticalTimeout)
                         }
                     }
                 }
             }
             
-            describe("synchronous processing") {
+            describe("when processing multiple requests") {
                 let testingQueue = DispatchQueue(label: "Testing")
-                var steps: [String] = []
-                let expectedLabels = ["Step 1", "Step 2", "Finish"]
+                let requests: [(String, AnyMockedRequestable.Type)] = [("Success 1", SuccessRequest.self),
+                                                                    ("Fail 1", FailingRequest.self),
+                                                                    ("Success 2", SuccessRequest.self),
+                                                                    ("Fail 2", FailingRequest.self)]
+                let requestLabels = requests.map { $0.0 }
+                let failedLabel = "Failed"
+                let completionLabel = "Completed"
                 var calls: [AnyRequestCall]!
+                var steps: [String] = []
                 
                 beforeEach {
-                    calls = (0..<2).map { index in
-                        self.makeCall(for: SuccessRequest.self) {
-                            testingQueue.sync { steps.append("\(expectedLabels[index])") }
+                    steps = []
+                    calls = requests.map { pair in
+                        return self.makeCall(for: pair.1) {
+                            testingQueue.sync { steps.append(pair.0) }
                         }
                     }
                 }
                 
-                it("Should be executed in strict order") {
-                    self.service.request(calls, option: .executeSynchronously(ignoreFailures: true)) { _ in
-                        testingQueue.sync { steps.append(expectedLabels[2]) }
-                    }
-                    expect(steps).toEventually(equal(expectedLabels), timeout: criticalTimeout)
-                }
-            }
-            
-            describe("asynchronous processing") {
-                let testingQueue = DispatchQueue(label: "Testing")
-                var steps: [String] = []
-                let expectedLabels = ["Step 1", "Step 2", "Finish"]
-                var calls: [AnyRequestCall]!
-                
-                beforeEach {
-                    calls = (0..<2).map { index in
-                        self.makeCall(for: SuccessRequest.self) {
-                            testingQueue.sync { steps.append("\(expectedLabels[index])") }
+                describe("synchronously") {
+                    context("and ignores failures") {
+                        let expectedLabels = requestLabels.appending(completionLabel)
+                        it("should be executed in strict order regardless failed reuqests and completed successfuly") {
+                            self.service.request(calls, option: .executeSynchronously(ignoreFailures: true)) {
+                                switch $0 {
+                                case .success: testingQueue.sync { steps.append(completionLabel) }
+                                case .failure: testingQueue.sync { steps.append(failedLabel) }
+                                }
+                            }
+                            expect(steps).toEventually(equal(expectedLabels), timeout: criticalTimeout)
                         }
                     }
-                }
-                
-                context("when ignoring failures") {
-                    it("should eventually be completed regardless failed requets") {
-                        self.service.request(calls, option: .executeAsynchronously(ignoreFailures: true)) { _ in
-                            testingQueue.sync { steps.append(expectedLabels[2]) }
-                        }
-                        expect(Set(steps)).toEventually(equal(Set(expectedLabels)), timeout: criticalTimeout)
-                    }
-                }
-                
-                context("when ") {
                     
+                    context("and does not ignore failures") {
+                        let expectedLabels = Array(requestLabels[0..<2]).appending(failedLabel)
+                        it("should be executed in strict order and fail after first failed reuqest") {
+                            self.service.request(calls, option: .executeSynchronously(ignoreFailures: false)) {
+                                switch $0 {
+                                case .success: testingQueue.sync { steps.append(completionLabel) }
+                                case .failure: testingQueue.sync { steps.append(failedLabel) }
+                                }
+                            }
+                            expect(steps).toEventually(equal(expectedLabels), timeout: criticalTimeout)
+                        }
+                    }
+                }
+                
+                describe("asynchronously") {
+                    context("and ignores failures") {
+                        it("should be executed randomly and completed successfuly regardless failed reuqests") {
+                            self.service.request(calls, option: .executeAsynchronously(ignoreFailures: true)) {
+                                switch $0 {
+                                case .success: testingQueue.sync { steps.append(completionLabel) }
+                                case .failure: testingQueue.sync { steps.append(failedLabel) }
+                                }
+                            }
+                            expect(steps).toEventually(contain(completionLabel), timeout: criticalTimeout)
+                        }
+                    }
+                    
+                    context("and does not ignore failures") {
+                        it("should be executed randomly and fail after first failed reuqest") {
+                            self.service.request(calls, option: .executeAsynchronously(ignoreFailures: false)) {
+                                switch $0 {
+                                case .success: testingQueue.sync { steps.append(completionLabel) }
+                                case .failure: testingQueue.sync { steps.append(failedLabel) }
+                                }
+                            }
+                            expect(steps).toEventually(contain(failedLabel), timeout: criticalTimeout)
+                        }
+                    }
                 }
             }
         }
@@ -204,4 +251,10 @@ private struct SuccessResponse: AnyResponse {
 private struct ForegroundConfiguration: AnyNetworkServiceConfiguration {
     
     let host = "https://google.com"
+    
+    let sessionConfiguration: URLSessionConfiguration = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 1
+        return configuration
+    }()
 }
