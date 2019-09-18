@@ -15,7 +15,7 @@ import Alamofire
 /// - Version:     3.0
 /// - Since:       10/30/2016
 /// - Author:      AdYa
-class AlamofireRequestCall: AnyRequestCall {
+class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebugStringConvertible {
 
     /// `Request` to be called.
     public let request: AnyRequestable
@@ -44,6 +44,14 @@ class AlamofireRequestCall: AnyRequestCall {
     public func cancel() {
         token?.cancel()
         token = nil
+    }
+    
+    public var description: String {
+        return token?.description ?? request.description
+    }
+    
+    public var debugDescription: String {
+        return token?.debugDescription ?? request.description
     }
 }
 
