@@ -492,9 +492,12 @@ private extension AlamofireNetworkService {
                     $0.handler(.failure(error: error))
                     return
                 }
-            
+                
                 if let response = $0.responseType.init(response: httpResponse, body: value) {
                     $0.handler(.success(response: response))
+                } else {
+                    log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")
+                    $0.handler(.failure(error: error))
                 }
                 return
                 
