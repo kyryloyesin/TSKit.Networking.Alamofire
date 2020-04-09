@@ -1,6 +1,6 @@
 // - Since: 10/30/2016
 // - Author: Arkadii Hlushchevskyi
-// - Copyright: © 2019. Arkadii Hlushchevskyi.
+// - Copyright: © 2020. Arkadii Hlushchevskyi.
 // - Seealso: https://github.com/adya/TSKit.Networking.Alamofire/blob/master/LICENSE.md
 
 import Dispatch
