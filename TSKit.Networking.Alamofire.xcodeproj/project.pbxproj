@@ -22,7 +22,6 @@
 		007DF0CB2350F1F8005F51F1 /* AlamofireRequestCallBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */; };
 		007DF0CC2350F1F8005F51F1 /* AlamofireNetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */; };
 		007DF0CD2350F1F8005F51F1 /* AlamofireNetworkServiceError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */; };
-		007DF0CE2350F1F8005F51F1 /* ReachabilityObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00CCC59F2286D24B0035A700 /* ReachabilityObserver.swift */; };
 		007DF0CF2350F1F8005F51F1 /* RequestWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */; };
 		007DF0D52350F1F8005F51F1 /* TSKit_Networking_Alamofire.h in Headers */ = {isa = PBXBuildFile; fileRef = 0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		007DF0D72350F1F8005F51F1 /* Cartfile in Resources */ = {isa = PBXBuildFile; fileRef = 00BC01C921502DC90009290B /* Cartfile */; };
@@ -40,7 +39,6 @@
 		00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CE21502E020009290B /* AlamofireRequestCall.swift */; };
 		00C4D6E922C8D2C600480DBC /* OHHTTPStubs.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 00C4D6E722C8D2C300480DBC /* OHHTTPStubs.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		00C4D6EA22C8D2C900480DBC /* OHHTTPStubs.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00C4D6E722C8D2C300480DBC /* OHHTTPStubs.framework */; };
-		00CCC5A02286D24B0035A700 /* ReachabilityObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00CCC59F2286D24B0035A700 /* ReachabilityObserver.swift */; };
 		2D9E6357022DFE7C303703CD /* AlamofireNetworkServiceError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */; };
 		2D9E64794E7C92FA246F9769 /* RequestWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */; };
 /* End PBXBuildFile section */
@@ -94,7 +92,6 @@
 		00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCallBuilder.swift; sourceTree = "<group>"; };
 		00BC01CE21502E020009290B /* AlamofireRequestCall.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCall.swift; sourceTree = "<group>"; };
 		00C4D6E722C8D2C300480DBC /* OHHTTPStubs.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OHHTTPStubs.framework; path = Carthage/Build/iOS/OHHTTPStubs.framework; sourceTree = "<group>"; };
-		00CCC59F2286D24B0035A700 /* ReachabilityObserver.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReachabilityObserver.swift; sourceTree = "<group>"; };
 		2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RequestWrapper.swift; sourceTree = "<group>"; };
 		2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireNetworkServiceError.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -203,7 +200,6 @@
 				00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */,
 				2D9E6E86950F88BF666E2498 /* AlamofireNetworkServiceError.swift */,
 				2D9E63CA1FC61CC6D2CE35F1 /* RequestWrapper.swift */,
-				00CCC59F2286D24B0035A700 /* ReachabilityObserver.swift */,
 			);
 			path = Sources;
 			sourceTree = "<group>";
@@ -373,7 +369,6 @@
 				00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */,
 				0057DDCA2013A93E002B8429 /* AlamofireNetworkService.swift in Sources */,
 				2D9E6357022DFE7C303703CD /* AlamofireNetworkServiceError.swift in Sources */,
-				00CCC5A02286D24B0035A700 /* ReachabilityObserver.swift in Sources */,
 				2D9E64794E7C92FA246F9769 /* RequestWrapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -386,7 +381,6 @@
 				007DF0CB2350F1F8005F51F1 /* AlamofireRequestCallBuilder.swift in Sources */,
 				007DF0CC2350F1F8005F51F1 /* AlamofireNetworkService.swift in Sources */,
 				007DF0CD2350F1F8005F51F1 /* AlamofireNetworkServiceError.swift in Sources */,
-				007DF0CE2350F1F8005F51F1 /* ReachabilityObserver.swift in Sources */,
 				007DF0CF2350F1F8005F51F1 /* RequestWrapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
