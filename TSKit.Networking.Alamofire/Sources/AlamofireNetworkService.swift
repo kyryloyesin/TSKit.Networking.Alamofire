@@ -9,13 +9,6 @@ import TSKit_Injection
 import TSKit_Core
 import TSKit_Log
 
-
-/// RequestManager is part of TSNetworking layer. It provides a way to do request calls defined by Request objects.
-/// Key features:
-/// 1. It is designed to be used directly without any sublasses.
-/// 2. Highly configurable via configuration object.
-/// 3. Sync multiple requests.
-/// 4. Simple and obvious way to create request calls.
 public class AlamofireNetworkService: AnyNetworkService {
 
     private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
@@ -205,12 +198,21 @@ private extension AlamofireNetworkService {
                            })
             return wrapper
         } else if isBackground {
-            let destination: DownloadRequest.DownloadFileDestination = { tempFileURL, _ in
-                let documentsPath = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0]
-                let documentsURL = URL(fileURLWithPath: documentsPath, isDirectory: true)
-                let fileURL = documentsURL.appendingPathComponent(tempFileURL.lastPathComponent)
-
-                return (fileURL, [.removePreviousFile, .createIntermediateDirectories])
+            let destination: DownloadRequest.DownloadFileDestination = { [weak self] tempFileURL, _ in
+                func temporaryDirectory() -> URL {
+                    if #available(iOS 10.0, *) {
+                        return FileManager.default.temporaryDirectory
+                    } else {
+                        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                    }
+                }
+                
+                let defaultFileUrl = temporaryDirectory().appendingPathComponent(tempFileURL.lastPathComponent)
+                let defaultOptions: DownloadRequest.DownloadOptions = [.removePreviousFile, .createIntermediateDirectories]
+                guard let self = self else { return (defaultFileUrl, defaultOptions) }
+                
+                let fileUrl = self.configuration.sessionTemporaryFilesDirectory?.appendingPathComponent(tempFileURL.lastPathComponent) ?? defaultFileUrl
+                return (fileUrl, defaultOptions)
             }
             let request = manager.download(url,
                                            method: method,
