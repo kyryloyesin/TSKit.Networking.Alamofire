@@ -540,6 +540,26 @@ private extension TSKit_Networking.ParameterEncoding {
         case .json: return JSONEncoding.default
         case .url: return URLEncoding.default
         case .formData: return URLEncoding.default
+        case .path: return PathEncoding()
         }
+    }
+}
+
+private struct PathEncoding: Alamofire.ParameterEncoding {
+    
+    func encode(_ urlRequest: URLRequestConvertible, with parameters: Parameters?) throws -> URLRequest {
+        var urlRequest = try urlRequest.asURLRequest()
+        
+        guard let parameters = parameters else { return urlRequest }
+        
+        guard let url = urlRequest.url,
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            throw AFError.parameterEncodingFailed(reason: .missingURL)
+        }
+        parameters.forEach { (key: String, value: Any) in
+            components.path = components.path.replacingOccurrences(of: "$\(key)", with: "\(value)", options: [])
+        }
+        urlRequest.url = try components.asURL()
+        return urlRequest
     }
 }
