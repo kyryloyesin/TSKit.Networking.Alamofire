@@ -150,7 +150,7 @@ private extension AlamofireNetworkService {
         let method = HTTPMethod(call.request.method)
         let encoding = call.request.encoding.alamofireEncoding
         let headers = constructHeaders(withRequest: call.request)
-        let url = constructUrl(withRequest: call.request)
+        let url: String = constructUrl(withRequest: call.request)
 
         if let request = call.request as? AnyMultipartRequestable {
             let wrapper = RequestWrapper()
@@ -245,6 +245,17 @@ private extension AlamofireNetworkService {
 // MARK: - Constructing request properties.
 private extension AlamofireNetworkService {
 
+    func constructUrl(withRequest request: AnyRequestable) -> String {
+        guard !request.path.contains("http") else {
+            return request.path
+        }
+
+        let host = request.host ?? configuration.host
+        
+        let path = request.path.hasPrefix("/") ? request.path : "/\(request.path)"
+        return "\(host.trimmingCharacters(in: CharacterSet(charactersIn: "/")))\(path)"
+    }
+    
     func constructUrl(withRequest request: AnyRequestable) -> URL {
         guard let url = URL(string: (request.host ?? configuration.host)) else {
             let message = "Neither default `host` nor request's `host` had been specified."
