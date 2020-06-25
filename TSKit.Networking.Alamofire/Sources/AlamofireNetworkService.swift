@@ -343,49 +343,69 @@ private extension AlamofireNetworkService {
             result = localResult
         }
         
+        aRequest.validate(statusCode: call.request.statusCodes)
+        
+        let kinds = Set(call.handlers.map { $0.responseType.kind })
+        
         let handlingGroup = DispatchGroup()
-        (0..<4).forEach { _ in handlingGroup.enter() } // enter group for each scheduled response.
+        
+        kinds.forEach {
+            handlingGroup.enter() // enter group for each scheduled response.
+            switch $0 {
+                case .json:
+                    aRequest.responseJSON(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.value,
+                                                         kind: .json,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                    }
+                
+                case .data:
+                    aRequest.responseData(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.value,
+                                                         kind: .data,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                }
+                
+                case .string:
+                    aRequest.responseString(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.value,
+                                                         kind: .string,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                }
+                
+                case .empty:
+                    aRequest.response(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: nil,
+                                                         kind: .empty,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                }
+            }
+        }
+            
         handlingGroup.notify(queue: call.queue) {
             completion(result)
         }
-        aRequest.validate(statusCode: call.request.statusCodes)
-         .responseData(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: $0.value,
-                                             kind: .data,
-                                             call: call)
-            setResult(result)
-            handlingGroup.leave()
-        }.responseJSON(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: $0.value,
-                                             kind: .json,
-                                             call: call)
-            setResult(result)
-            handlingGroup.leave()
-        }.responseString(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: $0.value,
-                                             kind: .string,
-                                             call: call)
-            setResult(result)
-            handlingGroup.leave()
-        }.response(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: nil,
-                                             kind: .empty,
-                                             call: call)
-            setResult(result)
-            handlingGroup.leave()
-        }
+
         return self
     }
 
@@ -408,52 +428,67 @@ private extension AlamofireNetworkService {
             result = localResult
         }
         
+        aRequest.validate(statusCode: call.request.statusCodes)
+        
+        let kinds = Set(call.handlers.map { $0.responseType.kind })
+        
         let handlingGroup = DispatchGroup()
-        (0..<4).forEach { _ in handlingGroup.enter() } // enter group for each scheduled response.
+        
+        kinds.forEach {
+            handlingGroup.enter() // enter group for each scheduled response.
+            switch $0 {
+                case .json:
+                    aRequest.responseJSON(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.value,
+                                                         kind: .json,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                    }
+                
+                case .data:
+                    aRequest.responseData(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.value,
+                                                         kind: .data,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                }
+                
+                case .string:
+                    aRequest.responseString(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.value,
+                                                         kind: .string,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                }
+                
+                case .empty:
+                    aRequest.response(queue: call.queue) { [weak self] in
+                        guard let self = self else { return }
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: nil,
+                                                         kind: .empty,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                }
+            }
+        }
+            
         handlingGroup.notify(queue: call.queue) {
             completion(result)
-        }
-        aRequest.validate(statusCode: call.request.statusCodes)
-        .responseData(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: $0.value,
-                                             kind: .data,
-                                             call: call)
-            try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
-            setResult(result)
-            handlingGroup.leave()
-        }.responseJSON(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: $0.value,
-                                             kind: .json,
-                                             call: call)
-            try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
-            setResult(result)
-            handlingGroup.leave()
-        }.responseString(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: $0.value,
-                                             kind: .string,
-                                             call: call)
-            try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
-            setResult(result)
-            handlingGroup.leave()
-        }.response(queue: call.queue) { [weak self] in
-            guard let self = self else { return }
-            let result = self.handleResponse($0.response,
-                                             error: $0.error,
-                                             value: nil,
-                                             kind: .empty,
-                                             call: call)
-            try? $0.destinationURL ==>? FileManager.default.removeItem(at:)
-            setResult(result)
-            handlingGroup.leave()
         }
         return self
     }
