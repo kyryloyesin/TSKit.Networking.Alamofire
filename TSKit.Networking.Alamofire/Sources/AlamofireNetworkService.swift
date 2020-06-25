@@ -506,7 +506,6 @@ private extension AlamofireNetworkService {
             // If error was received then return generic `.httpError` result
             // Otherwise silently succeed the call as no one is interested in processing result
             guard let error = error else {
-                log?.warning("Request call doesn't have valid handlers to handle request \(call.request).")
                 return .success(())
             }
             
@@ -546,12 +545,10 @@ private extension AlamofireNetworkService {
                 continue
             }
             
-            // If an error was received and it is a validation error we need to ensure
-            // that it was validation of status code that failed (and not contentType or other validatable headers).
-            // And if it is status code then deliver Response object to any subscribed halders.
+            // If an error was received and it is a validation error
+            // we need to deliver Response object to any halders subscribed to status code.
             if let error = error as? AFError,
-                error.isResponseValidationError,
-                !call.request.statusCodes.contains(status) {
+                error.isResponseValidationError {
                 do {
                     let response = try responseHandler.responseType.init(response: httpResponse, body: value)
                     responseHandler.handler(response)
