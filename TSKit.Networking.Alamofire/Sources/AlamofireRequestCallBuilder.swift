@@ -48,7 +48,7 @@ public class AlamofireRequestCallBuilder: AnyRequestCallBuilder {
     /// Attaches handler for any response
     public func response<ResponseType>(_ response: ResponseType.Type,
                                        handler: @escaping ResponseCompletion<ResponseType>) -> Self where ResponseType: AnyResponse {
-        return self.response(response, forStatuses: 100..<600, handler: handler)
+        return self.response(response, forStatuses: request.statusCodes, handler: handler)
     }
     
     public func error<ErrorType>(_ error: ErrorType.Type, handler: @escaping ErrorCompletion<ErrorType>) -> Self where ErrorType : AnyNetworkServiceBodyError {
