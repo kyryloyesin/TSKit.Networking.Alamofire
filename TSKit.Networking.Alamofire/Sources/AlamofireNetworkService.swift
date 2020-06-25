@@ -54,7 +54,7 @@ public class AlamofireNetworkService: AnyNetworkService {
                         queue: DispatchQueue = .global(),
                         completion: RequestCompletion? = nil) {
         let calls = requestCalls.map(supportedCall)
-        var capturedResult: EmptyResponseResult = .success(response: ())
+        var capturedResult: EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
             return
@@ -84,7 +84,7 @@ public class AlamofireNetworkService: AnyNetworkService {
                     if !ignoreFailures,
                        case .success = capturedResult {
                         requests.forEach { $0.request?.cancel() }
-                        capturedResult = .failure(error: error)
+                        capturedResult = .failure(error)
                     }
                 }
             }
@@ -105,7 +105,7 @@ public class AlamofireNetworkService: AnyNetworkService {
 
                     let nextIndex = index + 1
                     guard nextIndex < calls.count else {
-                        completion?(.success(response: ()))
+                        completion?(.success(()))
                         return
                     }
 
@@ -116,7 +116,7 @@ public class AlamofireNetworkService: AnyNetworkService {
                  .onFail {
                      if !ignoreFailures,
                         case .success = capturedResult {
-                         completion?(.failure(error: $0))
+                         completion?(.failure($0))
                      }
                  }
             }
@@ -193,7 +193,11 @@ private extension AlamofireNetworkService {
                                    }.appendResponse(request, call: call, completion: completion)
                                    wrapper.request = request
                                case .failure(let error):
-                                   wrapper.error = error
+                                wrapper.error = .init(request: request,
+                                                      response: nil,
+                                                      error: error,
+                                                      reason: .encodingFailure,
+                                                      body: nil)
                                }
                            })
             return wrapper
@@ -324,10 +328,10 @@ private extension AlamofireNetworkService {
     func appendResponse(_ aRequest: Alamofire.DataRequest,
                         call: AlamofireRequestCall,
                         completion: @escaping RequestCompletion) -> Self {
-        var result: EmptyResponseResult!
+        var result: EmptyResponse!
         
         /// Captures success if at least one handler returned success otherwise first error.
-        func setResult(_ localResult: EmptyResponseResult) {
+        func setResult(_ localResult: EmptyResponse) {
             guard result != nil else {
                 result = localResult
                 return
@@ -389,10 +393,10 @@ private extension AlamofireNetworkService {
     func appendResponse(_ aRequest: Alamofire.DownloadRequest,
                         call: AlamofireRequestCall,
                         completion: @escaping RequestCompletion) -> Self {
-        var result: EmptyResponseResult!
+        var result: EmptyResponse!
         
         /// Captures success if at least one handler returned success otherwise first error.
-        func setResult(_ localResult: EmptyResponseResult) {
+        func setResult(_ localResult: EmptyResponse) {
             guard result != nil else {
                 result = localResult
                 return
@@ -458,11 +462,20 @@ private extension AlamofireNetworkService {
                                 error: Error?,
                                 value: Any?,
                                 kind: ResponseKind,
-                                call: AlamofireRequestCall) -> EmptyResponseResult {
+                                call: AlamofireRequestCall) -> EmptyResponse {
         guard let httpResponse = response else {
             log?.severe("HTTP Response was not specified. Response will be ignored.")
-            let error = AlamofireNetworkServiceError.missingHttpResponse
-            return .failure(error: error)
+            call.errorHandler?.handle(request: call.request,
+                                      response: nil,
+                                      error: error,
+                                      reason: .unreachable,
+                                      body: nil)
+        
+            return .failure(.init(request: call.request,
+                                  response: nil,
+                                  error: error,
+                                  reason: .unreachable,
+                                  body: nil))
         }
         let status = httpResponse.statusCode
         
@@ -471,49 +484,73 @@ private extension AlamofireNetworkService {
         
         guard !validHandlers.isEmpty, shouldProcess else {
             if !shouldProcess {
-                log?.verbose("At least one interceptor has blocked response for \(call.request).")
+                log?.warning("At least one interceptor has blocked response for \(call.request).")
             } else {
-                log?.verbose("Request call doesn't have valid handlers to handle request \(call.request).")
+                log?.warning("Request call doesn't have valid handlers to handle request \(call.request).")
             }
-            let error = NetworkServiceError.skipped
-            validHandlers.forEach { $0.handler(.failure(error: error)) }
-            return .failure(error: error)
+            call.errorHandler?.handle(request: call.request,
+                                      response: httpResponse,
+                                      error: error,
+                                      reason: .skipped,
+                                      body: value)
+            return .failure(.init(request: call.request,
+                                  response: httpResponse,
+                                  error: error,
+                                  reason: .skipped,
+                                  body: value))
         }
         
         // Capture first error result or return success.
-        var result: EmptyResponseResult = .success(response: ())
-        validHandlers.forEach {
-            if let error = error as? AFError {
-                defer {
-                    if case .success = result {
-                        result = .failure(error: error)
+        var result: EmptyResponse = .success(())
+        
+        func captureFirstError(with reason: NetworkServiceErrorReason) {
+            if case .success = result {
+                result = .failure(.init(request: call.request,
+                                        response: httpResponse,
+                                        error: error,
+                                        reason: reason,
+                                        body: value))
+            }
+        }
+        
+        validHandlers.forEach { responseHandler in
+            if let error = error {
+                if let afError = error as? AFError, afError.isResponseValidationError {
+                    do {
+                        let response = try responseHandler.responseType.init(response: httpResponse, body: value)
+                        responseHandler.handler(response)
+                    } catch let constructionError {
+                        log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body").")
+                        call.errorHandler?.handle(request: call.request,
+                                                  response: httpResponse,
+                                                  error: constructionError,
+                                                  reason: .deserializationFailure,
+                                                  body: value)
+                        captureFirstError(with: .deserializationFailure)
                     }
-                }
-                guard error.isResponseValidationError else {
-                    log?.debug("Request \(call.request) failed with error: \(error).")
-                    $0.handler(.failure(error: error))
-                    return
-                }
-                
-                if let response = $0.responseType.init(response: httpResponse, body: value) {
-                    $0.handler(.success(response: response))
                 } else {
-                    log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")
-                    $0.handler(.failure(error: error))
+                    log?.debug("Request \(call.request) failed with error: \(error).")
+                    call.errorHandler?.handle(request: call.request,
+                                              response: httpResponse,
+                                              error: error,
+                                              reason: .httpError,
+                                              body: value)
+                    captureFirstError(with: .httpError)
                 }
-                return
-                
-            }
-            guard let response = $0.responseType.init(response: httpResponse, body: value) else {
-                log?.error("Failed to construct response of type '\($0.responseType)' using body: \(value ?? "no body").")
-                let error = AlamofireNetworkServiceError.invalidResponse
-                $0.handler(.failure(error: error))
-                if case .success = result {
-                    result = .failure(error: error)
+            } else {
+                do {
+                    let response = try responseHandler.responseType.init(response: httpResponse, body: value)
+                    responseHandler.handler(response)
+                } catch let constructionError {
+                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body").")
+                    call.errorHandler?.handle(request: call.request,
+                                              response: httpResponse,
+                                              error: constructionError,
+                                              reason: .deserializationFailure,
+                                              body: value)
+                    captureFirstError(with: .deserializationFailure)
                 }
-                return
             }
-            $0.handler(.success(response: response))
         }
         
         return result

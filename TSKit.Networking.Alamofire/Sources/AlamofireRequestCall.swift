@@ -19,6 +19,8 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
     let queue: DispatchQueue
 
     let handlers: [ResponseHandler]
+    
+    let errorHandler: ErrorHandler?
 
     let progress: [ProgressClosure]
 
@@ -28,10 +30,12 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
     init(request: AnyRequestable,
          queue: DispatchQueue,
          handlers: [ResponseHandler],
+         errorHandler: ErrorHandler?,
          progressClosures: [ProgressClosure]) {
         self.request = request
         self.queue = queue
         self.handlers = handlers
+        self.errorHandler = errorHandler
         self.progress = progressClosures
     }
 
@@ -55,7 +59,26 @@ struct ResponseHandler {
 
     let responseType: AnyResponse.Type
 
-    let handler: AnyResponseResultCompletion
+    let handler: AnyResponseCompletion
+}
+
+struct ErrorHandler {
+    
+    let errorType: AnyNetworkServiceError.Type
+
+    let handler: AnyErrorCompletion
+    
+    func handle(request: AnyRequestable,
+                response: HTTPURLResponse?,
+                error: Error?,
+                reason: NetworkServiceErrorReason,
+                body: Any?) {
+        handler(errorType.init(request: request,
+                               response: response,
+                               error: error,
+                               reason: reason,
+                               body: body))
+    }
 }
 
 typealias ProgressClosure = (Progress) -> Void

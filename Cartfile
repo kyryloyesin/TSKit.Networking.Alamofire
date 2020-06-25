@@ -1,4 +1,4 @@
 github "Alamofire/Alamofire" ~> 4.4
-github "adya/TSKit.Networking" ~> 2.0
+github "adya/TSKit.Networking" ~> 3.0
 github "adya/TSKit.Log" ~> 2.0
 github "adya/TSKit.Injection"

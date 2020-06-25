@@ -5,6 +5,7 @@
 
 import Foundation
 import Alamofire
+import TSKit_Networking
 
 class RequestWrapper {
 
@@ -14,7 +15,7 @@ class RequestWrapper {
         }
     }
 
-    var error: Error? {
+    var error: NetworkServiceError? {
         didSet {
             notifyIfFail()
         }
@@ -27,7 +28,7 @@ class RequestWrapper {
     }
 
     @discardableResult
-    func onFail(_ closure: ((Error) -> Void)?) -> Self {
+    func onFail(_ closure: ((NetworkServiceError) -> Void)?) -> Self {
         onFailClosure = closure
         return self
     }
@@ -38,7 +39,7 @@ class RequestWrapper {
         }
     }
 
-    private var onFailClosure: ((Error) -> Void)? {
+    private var onFailClosure: ((NetworkServiceError) -> Void)? {
         didSet {
             notifyIfReady()
         }
