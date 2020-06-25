@@ -477,22 +477,19 @@ private extension AlamofireNetworkService {
                                   reason: .unreachable,
                                   body: nil))
         }
-        let status = httpResponse.statusCode
         
-        let validHandlers = call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
-        let shouldProcess = self.interceptors?.reduce(true) { $0 && $1.intercept(call: call, response: httpResponse, body: value) } ?? true
+        let shouldProcess = self.interceptors?.allSatisfy { $0.intercept(call: call, response: httpResponse, body: value) } ?? true
         
-        guard !validHandlers.isEmpty, shouldProcess else {
-            if !shouldProcess {
-                log?.warning("At least one interceptor has blocked response for \(call.request).")
-            } else {
-                log?.warning("Request call doesn't have valid handlers to handle request \(call.request).")
-            }
+        // If any interceptor blocked response processing then exit.
+        guard shouldProcess else {
+            log?.warning("At least one interceptor has blocked response for \(call.request).")
+           
             call.errorHandler?.handle(request: call.request,
                                       response: httpResponse,
                                       error: error,
                                       reason: .skipped,
                                       body: value)
+            
             return .failure(.init(request: call.request,
                                   response: httpResponse,
                                   error: error,
@@ -500,44 +497,36 @@ private extension AlamofireNetworkService {
                                   body: value))
         }
         
-        // Capture first error result or return success.
-        var result: EmptyResponse = .success(())
+        let status = httpResponse.statusCode
+        let validHandlers = call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
         
-        func captureFirstError(with reason: NetworkServiceErrorReason) {
-            if case .success = result {
-                result = .failure(.init(request: call.request,
-                                        response: httpResponse,
-                                        error: error,
-                                        reason: reason,
-                                        body: value))
+        // If no handlers attached for given status code with matching kind, produce an error
+        guard !validHandlers.isEmpty else {
+            
+            // If error was received then return generic `.httpError` result
+            // Otherwise silently succeed the call as no one is interested in processing result
+            guard let error = error else {
+                log?.warning("Request call doesn't have valid handlers to handle request \(call.request).")
+                return .success(())
             }
+            
+            call.errorHandler?.handle(request: call.request,
+                                      response: httpResponse,
+                                      error: error,
+                                      reason: .httpError,
+                                      body: value)
+            return .failure(.init(request: call.request,
+                                  response: httpResponse,
+                                  error: error,
+                                  reason: .httpError,
+                                  body: value))
         }
         
-        validHandlers.forEach { responseHandler in
-            if let error = error {
-                if let afError = error as? AFError, afError.isResponseValidationError {
-                    do {
-                        let response = try responseHandler.responseType.init(response: httpResponse, body: value)
-                        responseHandler.handler(response)
-                    } catch let constructionError {
-                        log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body").")
-                        call.errorHandler?.handle(request: call.request,
-                                                  response: httpResponse,
-                                                  error: constructionError,
-                                                  reason: .deserializationFailure,
-                                                  body: value)
-                        captureFirstError(with: .deserializationFailure)
-                    }
-                } else {
-                    log?.debug("Request \(call.request) failed with error: \(error).")
-                    call.errorHandler?.handle(request: call.request,
-                                              response: httpResponse,
-                                              error: error,
-                                              reason: .httpError,
-                                              body: value)
-                    captureFirstError(with: .httpError)
-                }
-            } else {
+        // For all valid handlers construct and deliver corresponding `AnyResponse` objects
+        for responseHandler in validHandlers {
+            
+            /// If there is no error then simply construct  response object and deliver it to handler.
+            guard let error = error else {
                 do {
                     let response = try responseHandler.responseType.init(response: httpResponse, body: value)
                     responseHandler.handler(response)
@@ -548,12 +537,54 @@ private extension AlamofireNetworkService {
                                               error: constructionError,
                                               reason: .deserializationFailure,
                                               body: value)
-                    captureFirstError(with: .deserializationFailure)
+                    return .failure(.init(request: call.request,
+                                          response: httpResponse,
+                                          error: constructionError,
+                                          reason: .deserializationFailure,
+                                          body: value))
                 }
+                continue
+            }
+            
+            // If an error was received and it is a validation error we need to ensure
+            // that it was validation of status code that failed (and not contentType or other validatable headers).
+            // And if it is status code then deliver Response object to any subscribed halders.
+            if let error = error as? AFError,
+                error.isResponseValidationError,
+                !call.request.statusCodes.contains(status) {
+                do {
+                    let response = try responseHandler.responseType.init(response: httpResponse, body: value)
+                    responseHandler.handler(response)
+                } catch let constructionError {
+                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body").")
+                    call.errorHandler?.handle(request: call.request,
+                                              response: httpResponse,
+                                              error: constructionError,
+                                              reason: .deserializationFailure,
+                                              body: value)
+                    return .failure(.init(request: call.request,
+                                          response: httpResponse,
+                                          error: error,
+                                          reason: .deserializationFailure,
+                                          body: value))
+                }
+            } else {
+                // If it is any other error then report the error.
+                call.errorHandler?.handle(request: call.request,
+                                          response: httpResponse,
+                                          error: error,
+                                          reason: .httpError,
+                                          body: value)
+                return .failure(.init(request: call.request,
+                                      response: httpResponse,
+                                      error: error,
+                                      reason: .httpError,
+                                      body: value))
             }
         }
         
-        return result
+        // By the end of the loop report successful handling.
+        return .success(())
     }
 }
 
