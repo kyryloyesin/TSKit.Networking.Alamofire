@@ -544,10 +544,24 @@ private extension AlamofireNetworkService {
         }
         
         let status = httpResponse.statusCode
-        let validHandlers = call.handlers.filter { $0.statuses.contains(status) && $0.responseType.kind == kind }
+
+        /// Handlers that can accept response's status code.
+        let statusHandlers = call.handlers.filter { $0.statuses.contains(status) }
+        
+        /// Handlers that both can accept response's status code and have expected kind of body.
+        let validHandlers = statusHandlers.filter { $0.responseType.kind == kind }
         
         // If no handlers attached for given status code with matching kind, produce an error
         guard !validHandlers.isEmpty else {
+            
+            // If status handlers are not empty it means that `handleResponse` is trigerred by not matching `kind`.
+            // Ideally this should not happen, but at the moment there is no way to attach status-based handlers
+            // only when needed because status codes are not known until later when we got response from server.
+            // In such case we silently succeed current call as it will be handled by another kind.
+            // Otherwise it means that there is no handlers for that status code at all so we should trigger necessary global handlers.
+            guard statusHandlers.isEmpty else {
+                return .success(())
+            }
             
             // If error was received then return generic `.httpError` result
             // Otherwise silently succeed the call as no one is interested in processing result
