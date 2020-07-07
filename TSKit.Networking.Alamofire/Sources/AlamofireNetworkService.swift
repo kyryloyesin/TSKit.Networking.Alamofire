@@ -148,7 +148,7 @@ private extension AlamofireNetworkService {
                  _ completion: @escaping RequestCompletion) -> RequestWrapper {
 
         let method = HTTPMethod(call.request.method)
-        let encoding = call.request.encoding.alamofireEncoding
+        let encoding = call.request.encoding.alamofireEncoding(withOptions: call.request.encodingOptions ?? configuration.encodingOptions)
         let headers = constructHeaders(withRequest: call.request)
         let url: String = constructUrl(withRequest: call.request)
 
@@ -664,12 +664,24 @@ private extension Alamofire.HTTPMethod {
 
 private extension TSKit_Networking.ParameterEncoding {
 
-    var alamofireEncoding: Alamofire.ParameterEncoding {
+    func alamofireEncoding(withOptions options: TSKit_Networking.ParameterEncoding.Options) -> Alamofire.ParameterEncoding {
         switch self {
         case .json: return JSONEncoding.default
-        case .url: return URLEncoding.default
+            case .url: return URLEncoding(destination: .methodDependent,
+                                      arrayEncoding: options.useBracketsForArrays ? .brackets : .noBrackets,
+                                      boolEncoding: options.boolEncoding.alamofireEncoding)
         case .formData: return URLEncoding.default
         case .path: return PathEncoding()
+        }
+    }
+}
+
+private extension TSKit_Networking.ParameterEncoding.Options.BoolEncoding {
+    
+    var alamofireEncoding: URLEncoding.BoolEncoding {
+        switch self {
+            case .literal: return .literal
+            case .numeric: return .numeric
         }
     }
 }
