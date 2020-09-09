@@ -14,32 +14,25 @@ class AlamofireNetworkServiceSpec: QuickSpec {
         return service.builder(for: request)
                       .dispatch(to: .global())
                       .response(SuccessResponse.self) {
-                        switch $0 {
-                        case .success(let response): print(response)
-                        case .failure(let error): print(error)
-                        }
+                        print($0)
                         handler()
                         
-            }
+        }.error {
+            print($0)
+            handler()
+        }
                       .make()!
     }
     
     private func makeStatusCall<T>(for request: T.Type, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
         return service.builder(for: request.init())
             .dispatch(to: .global())
-            .response(SuccessResponse.self, forStatuses: 200) { res in
-                if case .success(let response) = res {
-                    result(true, response.response.statusCode)
-                } else {
-                    result(true, nil)
-                }
-            }
-            .response(FailingResponse.self, forStatuses: 404) { res in
-                if case .success(let response) = res {
-                    result(false, response.response.statusCode)
-                } else {
-                    result(false, nil)
-                }
+            .response(SuccessResponse.self, forStatuses: 200) {
+                result(true, $0.response.statusCode)
+            }.response(FailingResponse.self, forStatuses: 404) {
+                result(true, $0.response.statusCode)
+            }.error { _ in
+                result(false, nil)
             }.make()!
     }
     
@@ -51,7 +44,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
             beforeEach {
                 Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
                     let logger = Logger()
-                    logger.addWriter(PrintLogEntryWriter())
+                    logger.writers = [PrintLogEntryWriter()]
                     return logger
                 }])
                 self.service = .init(configuration: ForegroundConfiguration())
@@ -120,7 +113,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                                     receivedStatuses.append(status)
                                 }
                             })
-                            expect(isSuccess).toEventually(equal([false]), timeout: criticalTimeout)
+                            expect(isSuccess).toEventually(equal([true]), timeout: criticalTimeout)
                             expect(receivedStatuses).toEventually(equal([404]), timeout: criticalTimeout)
                         }
                     }
@@ -150,7 +143,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                 
                 describe("synchronously") {
                     context("and ignores failures") {
-                        let expectedLabels = requestLabels.appending(completionLabel)
+                        let expectedLabels = requests.map { $0.0 }.appending(completionLabel)
                         it("should be executed in strict order regardless failed reuqests and completed successfuly") {
                             self.service.request(calls, option: .executeSynchronously(ignoreFailures: true)) {
                                 switch $0 {
@@ -230,7 +223,7 @@ private struct FailingResponse: AnyResponse {
     
     let response: HTTPURLResponse
     
-    init?(response: HTTPURLResponse, body: Any?) {
+    init(response: HTTPURLResponse, body: Any?) throws {
         self.response = response
     }
     
@@ -242,13 +235,16 @@ private struct SuccessResponse: AnyResponse {
     
     let response: HTTPURLResponse
     
-    init?(response: HTTPURLResponse, body: Any?) {
+    init(response: HTTPURLResponse, body: Any?) throws {
         self.response = response
     }
     
 }
 
 private struct ForegroundConfiguration: AnyNetworkServiceConfiguration {
+   
+    
+    var sessionTemporaryFilesDirectory: URL? { nil }
     
     let host = "https://google.com"
     
