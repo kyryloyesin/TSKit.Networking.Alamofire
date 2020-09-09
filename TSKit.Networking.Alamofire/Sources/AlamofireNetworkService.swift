@@ -335,6 +335,16 @@ private extension AlamofireNetworkService {
         }
         return self
     }
+    
+    @discardableResult
+    func appendProgress(_ aRequest: Alamofire.UploadRequest,
+                        queue: DispatchQueue,
+                        progressCompletion: RequestProgressCompletion? = nil) -> Self {
+        aRequest.uploadProgress(queue: queue) { (progress) in
+            progressCompletion?(progress)
+        }
+        return self
+    }
 
     @discardableResult
     func appendResponse(_ aRequest: Alamofire.DataRequest,
