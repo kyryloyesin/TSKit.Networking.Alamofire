@@ -75,6 +75,7 @@ public class AlamofireNetworkService: AnyNetworkService {
                     }
                 }
             }
+            let weakRequests = requests.map(Weak<RequestWrapper>.init(object:))
             requests.forEach {
                 group?.enter()
                 $0.onReady {
@@ -83,7 +84,7 @@ public class AlamofireNetworkService: AnyNetworkService {
                     group?.leave()
                     if !ignoreFailures,
                        case .success = capturedResult {
-                        requests.forEach { $0.request?.cancel() }
+                        weakRequests.forEach { $0.object?.request?.cancel() }
                         capturedResult = .failure(error)
                     }
                 }
