@@ -391,6 +391,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: $0.value,
+                                                         rawData: $0.data,
                                                          kind: .json,
                                                          call: call)
                         setResult(result)
@@ -403,6 +404,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: $0.value,
+                                                         rawData: $0.data,
                                                          kind: .data,
                                                          call: call)
                         setResult(result)
@@ -415,6 +417,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: $0.value,
+                                                         rawData: $0.data,
                                                          kind: .string,
                                                          call: call)
                         setResult(result)
@@ -427,6 +430,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: nil,
+                                                         rawData: $0.data,
                                                          kind: .empty,
                                                          call: call)
                         setResult(result)
@@ -476,6 +480,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: $0.value,
+                                                         rawData: nil,
                                                          kind: .json,
                                                          call: call)
                         setResult(result)
@@ -488,6 +493,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: $0.value,
+                                                         rawData: nil,
                                                          kind: .data,
                                                          call: call)
                         setResult(result)
@@ -500,6 +506,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: $0.value,
+                                                         rawData: nil,
                                                          kind: .string,
                                                          call: call)
                         setResult(result)
@@ -512,6 +519,7 @@ private extension AlamofireNetworkService {
                         let result = self.handleResponse($0.response,
                                                          error: $0.error,
                                                          value: nil,
+                                                         rawData: nil,
                                                          kind: .empty,
                                                          call: call)
                         setResult(result)
@@ -529,6 +537,7 @@ private extension AlamofireNetworkService {
     private func handleResponse(_ response: HTTPURLResponse?,
                                 error: Error?,
                                 value: Any?,
+                                rawData: Data?,
                                 kind: ResponseKind,
                                 call: AlamofireRequestCall) -> EmptyResponse {
         guard call.token != nil else {
@@ -550,6 +559,16 @@ private extension AlamofireNetworkService {
                                   reason: .unreachable,
                                   body: nil))
         }
+        
+        // Reconstruct body from raw data received from server based on response kind.
+        let value = value ?? { () -> Any? in
+            guard let data = rawData else { return nil }
+            switch kind {
+                case .string, .empty: return String(data: data, encoding: .utf8)
+                case .json: return try? JSONSerialization.jsonObject(with: data, options: [])
+                case .data: return data
+            }
+        }()
         
         let shouldProcess = self.interceptors?.allSatisfy { $0.intercept(call: call, response: httpResponse, body: value) } ?? true
         
