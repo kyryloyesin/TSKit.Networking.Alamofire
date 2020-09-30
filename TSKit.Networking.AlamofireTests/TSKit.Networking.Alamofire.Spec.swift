@@ -215,8 +215,6 @@ private struct FailingRequest: AnyMockedRequestable {
     let method = RequestMethod.get
     
     let path: String = "not_existed"
-    
-    var statusCodes: Set<Int> { [404] }
 }
 
 private struct FailingResponse: AnyResponse {
