@@ -194,12 +194,14 @@ private extension AlamofireNetworkService {
                            headers: headers,
                            encodingCompletion: { [weak self] encodingResult in
                                switch encodingResult {
-                               case .success(let request, _, _):
-                                   self?.appendProgress(request, queue: call.queue) { progress in
-                                       call.progress.forEach { $0(progress) }
-                                   }.appendResponse(request, call: call, completion: completion)
-                                   wrapper.request = request
-                               case .failure(let error):
+                                case .success(let request, _, _):
+                                    self?.appendProgress(request, queue: call.queue) { progress in
+                                        call.progress.forEach { $0(progress) }
+                                    }.appendResponse(request, call: call, completion: completion)
+                                    wrapper.request = request
+                                    call.token = request
+                                    
+                                case .failure(let error):
                                 wrapper.error = .init(request: request,
                                                       response: nil,
                                                       error: error,
@@ -231,6 +233,7 @@ private extension AlamofireNetworkService {
                                            encoding: encoding,
                                            headers: headers,
                                            to: destination)
+            call.token = request
             appendProgress(request, queue: call.queue) { progress in
                 call.progress.forEach { $0(progress) }
             }.appendResponse(request, call: call, completion: completion)
@@ -241,6 +244,7 @@ private extension AlamofireNetworkService {
                                           parameters: call.request.parameters,
                                           encoding: encoding,
                                           headers: headers)
+            call.token = request
             appendProgress(request, queue: call.queue) { progress in
                 call.progress.forEach { $0(progress) }
             }.appendResponse(request, call: call, completion: completion)
@@ -527,6 +531,11 @@ private extension AlamofireNetworkService {
                                 value: Any?,
                                 kind: ResponseKind,
                                 call: AlamofireRequestCall) -> EmptyResponse {
+        guard call.token != nil else {
+            log?.verbose(tag: self)("Request has been cancelled and will be ignored")
+            return .success(())
+        }
+        
         guard let httpResponse = response else {
             log?.severe("HTTP Response was not specified. Response will be ignored")
             call.errorHandler?.handle(request: call.request,
