@@ -564,9 +564,9 @@ private extension AlamofireNetworkService {
         let value = value ?? { () -> Any? in
             guard let data = rawData else { return nil }
             switch kind {
-                case .string, .empty: return String(data: data, encoding: .utf8)
+                case .string: return String(data: data, encoding: .utf8)
                 case .json: return try? JSONSerialization.jsonObject(with: data, options: [])
-                case .data: return data
+                case .data, .empty: return data
             }
         }()
         

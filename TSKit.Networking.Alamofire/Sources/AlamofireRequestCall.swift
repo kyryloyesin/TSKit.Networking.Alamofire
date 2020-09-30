@@ -73,12 +73,14 @@ struct ErrorHandler {
                          error: Error?,
                          reason: NetworkServiceErrorReason,
                          body: Any?) {
+        
+        let handler = self.handler
+        self.handler = nil
         handler?(errorType.init(request: request,
                                 response: response,
                                 error: error,
                                 reason: reason,
                                 body: body))
-        handler = nil
     }
 }
 
