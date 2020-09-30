@@ -20,7 +20,7 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
 
     let handlers: [ResponseHandler]
     
-    let errorHandler: ErrorHandler?
+    var errorHandler: ErrorHandler?
 
     let progress: [ProgressClosure]
 
@@ -66,18 +66,19 @@ struct ErrorHandler {
     
     let errorType: AnyNetworkServiceError.Type
 
-    let handler: AnyErrorCompletion
+    var handler: AnyErrorCompletion?
     
-    func handle(request: AnyRequestable,
-                response: HTTPURLResponse?,
-                error: Error?,
-                reason: NetworkServiceErrorReason,
-                body: Any?) {
-        handler(errorType.init(request: request,
-                               response: response,
-                               error: error,
-                               reason: reason,
-                               body: body))
+    mutating func handle(request: AnyRequestable,
+                         response: HTTPURLResponse?,
+                         error: Error?,
+                         reason: NetworkServiceErrorReason,
+                         body: Any?) {
+        handler?(errorType.init(request: request,
+                                response: response,
+                                error: error,
+                                reason: reason,
+                                body: body))
+        handler = nil
     }
 }
 
