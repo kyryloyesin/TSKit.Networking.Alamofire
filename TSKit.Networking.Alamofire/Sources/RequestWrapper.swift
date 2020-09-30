@@ -41,7 +41,7 @@ class RequestWrapper {
 
     private var onFailClosure: ((NetworkServiceError) -> Void)? {
         didSet {
-            notifyIfReady()
+            notifyIfFail()
         }
     }
 

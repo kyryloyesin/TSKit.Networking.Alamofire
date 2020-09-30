@@ -53,7 +53,13 @@ public class AlamofireNetworkService: AnyNetworkService {
                         option: ExecutionOption,
                         queue: DispatchQueue = .global(),
                         completion: RequestCompletion? = nil) {
-        let calls = requestCalls.map(supportedCall)
+        let calls = requestCalls.map(supportedCall).filter { call in
+            let isAllowed = self.interceptors?.allSatisfy { $0.intercept(call: call) } ?? true
+            
+            if !isAllowed { log?.warning("At least one interceptor has denied \(call.request)") }
+            
+            return isAllowed
+        }
         var capturedResult: EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
@@ -129,7 +135,7 @@ public class AlamofireNetworkService: AnyNetworkService {
     /// Verifies that specified call is the one that is supported by service.
     private func supportedCall(_ call: AnyRequestCall) -> AlamofireRequestCall {
         guard let supportedCall = call as? AlamofireRequestCall else {
-            let message = "'\(AlamofireNetworkService.self)' does not support '\(type(of: call))'. You should use '\(AlamofireRequestCall.self)'."
+            let message = "'\(AlamofireNetworkService.self)' does not support '\(type(of: call))'. You should use '\(AlamofireRequestCall.self)'"
             log?.severe(message)
             preconditionFailure(message)
         }
@@ -259,7 +265,7 @@ private extension AlamofireNetworkService {
     
     func constructUrl(withRequest request: AnyRequestable) -> URL {
         guard let url = URL(string: (request.host ?? configuration.host)) else {
-            let message = "Neither default `host` nor request's `host` had been specified."
+            let message = "Neither default `host` nor request's `host` had been specified"
             log?.severe(message)
             preconditionFailure(message)
         }
@@ -318,10 +324,9 @@ private extension AlamofireNetworkService {
     func appendProgress(_ aRequest: Alamofire.DownloadRequest,
                         queue: DispatchQueue,
                         progressCompletion: RequestProgressCompletion? = nil) -> Self {
-        if let completion = progressCompletion {
-            aRequest.downloadProgress(queue: queue) { (progress) in
-                completion(progress)
-            }
+        guard let progressCompletion = progressCompletion else { return self }
+        aRequest.downloadProgress(queue: queue) { (progress) in
+            progressCompletion(progress)
         }
         return self
     }
@@ -330,8 +335,9 @@ private extension AlamofireNetworkService {
     func appendProgress(_ aRequest: Alamofire.DataRequest,
                         queue: DispatchQueue,
                         progressCompletion: RequestProgressCompletion? = nil) -> Self {
+        guard let progressCompletion = progressCompletion else { return self }
         aRequest.downloadProgress(queue: queue) { (progress) in
-            progressCompletion?(progress)
+            progressCompletion(progress)
         }
         return self
     }
@@ -340,8 +346,9 @@ private extension AlamofireNetworkService {
     func appendProgress(_ aRequest: Alamofire.UploadRequest,
                         queue: DispatchQueue,
                         progressCompletion: RequestProgressCompletion? = nil) -> Self {
+        guard let progressCompletion = progressCompletion else { return self }
         aRequest.uploadProgress(queue: queue) { (progress) in
-            progressCompletion?(progress)
+            progressCompletion(progress)
         }
         return self
     }
@@ -521,7 +528,7 @@ private extension AlamofireNetworkService {
                                 kind: ResponseKind,
                                 call: AlamofireRequestCall) -> EmptyResponse {
         guard let httpResponse = response else {
-            log?.severe("HTTP Response was not specified. Response will be ignored.")
+            log?.severe("HTTP Response was not specified. Response will be ignored")
             call.errorHandler?.handle(request: call.request,
                                       response: nil,
                                       error: error,
@@ -539,7 +546,7 @@ private extension AlamofireNetworkService {
         
         // If any interceptor blocked response processing then exit.
         guard shouldProcess else {
-            log?.warning("At least one interceptor has blocked response for \(call.request).")
+            log?.warning("At least one interceptor has blocked response for \(call.request)")
            
             call.errorHandler?.handle(request: call.request,
                                       response: httpResponse,
@@ -601,7 +608,7 @@ private extension AlamofireNetworkService {
                     let response = try responseHandler.responseType.init(response: httpResponse, body: value)
                     responseHandler.handler(response)
                 } catch let constructionError {
-                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body").")
+                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body")")
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
@@ -626,7 +633,7 @@ private extension AlamofireNetworkService {
                     let response = try responseHandler.responseType.init(response: httpResponse, body: value)
                     responseHandler.handler(response)
                 } catch let constructionError {
-                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body").")
+                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body")")
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
