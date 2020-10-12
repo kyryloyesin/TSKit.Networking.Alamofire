@@ -195,8 +195,8 @@ private extension AlamofireNetworkService {
                            encodingCompletion: { [weak self] encodingResult in
                                switch encodingResult {
                                 case .success(let request, _, _):
-                                    self?.appendProgress(request, queue: call.queue) { progress in
-                                        call.progress.forEach { $0(progress) }
+                                    self?.appendProgress(request, queue: call.queue) { [weak call] progress in
+                                        call?.progress.forEach { $0(progress) }
                                     }.appendResponse(request, call: call, completion: completion)
                                     wrapper.request = request
                                     call.token = request
@@ -234,8 +234,8 @@ private extension AlamofireNetworkService {
                                            headers: headers,
                                            to: destination)
             call.token = request
-            appendProgress(request, queue: call.queue) { progress in
-                call.progress.forEach { $0(progress) }
+            appendProgress(request, queue: call.queue) { [weak call] progress in
+                call?.progress.forEach { $0(progress) }
             }.appendResponse(request, call: call, completion: completion)
             return RequestWrapper(request)
         } else {
@@ -245,8 +245,8 @@ private extension AlamofireNetworkService {
                                           encoding: encoding,
                                           headers: headers)
             call.token = request
-            appendProgress(request, queue: call.queue) { progress in
-                call.progress.forEach { $0(progress) }
+            appendProgress(request, queue: call.queue) { [weak call] progress in
+                call?.progress.forEach { $0(progress) }
             }.appendResponse(request, call: call, completion: completion)
             return RequestWrapper(request)
         }
