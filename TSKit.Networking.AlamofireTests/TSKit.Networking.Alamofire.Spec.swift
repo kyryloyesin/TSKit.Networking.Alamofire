@@ -39,7 +39,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
     private var service: AlamofireNetworkService!
     
     override func spec() {
-        let criticalTimeout: TimeInterval = 5
+        let criticalTimeout = DispatchTimeInterval.seconds(5)
         describe("Foreground alamofire network service") {
             beforeEach {
                 Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
@@ -139,6 +139,9 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                             testingQueue.sync { steps.append(pair.0) }
                         }
                     }
+                }
+                afterEach {
+                    calls.removeAll()
                 }
                 
                 describe("synchronously") {
