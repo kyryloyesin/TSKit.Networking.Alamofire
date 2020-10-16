@@ -14,17 +14,13 @@ public class AlamofireNetworkService: AnyNetworkService {
     private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
 
     public var backgroundSessionCompletionHandler: (() -> Void)? {
-        get {
-            return manager.backgroundCompletionHandler
-        }
-        set {
-            manager.backgroundCompletionHandler = newValue
-        }
+        get { nil }
+        set { log?.warning(tag: self)("backgroundSessionCompletionHandler is not supported in Alamofire") }
     }
     
     public var interceptors: [AnyNetworkServiceInterceptor]?
 
-    private let manager: Alamofire.SessionManager
+    private let manager: Alamofire.Session
 
     private let configuration: AnyNetworkServiceConfiguration
 
@@ -40,8 +36,8 @@ public class AlamofireNetworkService: AnyNetworkService {
     }
 
     public required init(configuration: AnyNetworkServiceConfiguration) {
-        manager = Alamofire.SessionManager(configuration: configuration.sessionConfiguration)
-        manager.startRequestsImmediately = false
+        manager = Alamofire.Session(configuration: configuration.sessionConfiguration,
+                                    startRequestsImmediately: false)
         self.configuration = configuration
     }
 
@@ -60,7 +56,7 @@ public class AlamofireNetworkService: AnyNetworkService {
             
             return isAllowed
         }
-        var capturedResult: EmptyResponse = .success(())
+        var capturedResult: TSKit_Networking.EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
             return
@@ -161,7 +157,7 @@ private extension AlamofireNetworkService {
 
         if let request = call.request as? AnyMultipartRequestable {
             let wrapper = RequestWrapper()
-            manager.upload(multipartFormData: { [weak self] formData in
+            let uploadRequest = manager.upload(multipartFormData: { [weak self] formData in
                 request.parameters?.forEach {
                     self?.appendParameter($0.1, named: $0.0, to: formData, using: request.parametersDataEncoding)
                 }
@@ -189,29 +185,20 @@ private extension AlamofireNetworkService {
                     }
                 }
             },
-                           to: url,
-                           method: method,
-                           headers: headers,
-                           encodingCompletion: { [weak self] encodingResult in
-                               switch encodingResult {
-                                case .success(let request, _, _):
-                                    self?.appendProgress(request, queue: call.queue) { [weak call] progress in
-                                        call?.progress.forEach { $0(progress) }
-                                    }.appendResponse(request, call: call, completion: completion)
-                                    wrapper.request = request
-                                    call.token = request
-                                    
-                                case .failure(let error):
-                                wrapper.error = .init(request: request,
-                                                      response: nil,
-                                                      error: error,
-                                                      reason: .encodingFailure,
-                                                      body: nil)
-                               }
-                           })
+            to: url,
+            method: method,
+            headers: headers,
+            requestModifier: {
+                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+            })
+            appendProgress(uploadRequest, queue: call.queue) { [weak call] progress in
+                call?.progress.forEach { $0(progress) }
+            }.appendResponse(uploadRequest, call: call, completion: completion)
+            wrapper.request = uploadRequest
+            call.token = uploadRequest
             return wrapper
         } else if isBackground {
-            let destination: DownloadRequest.DownloadFileDestination = { [weak self] tempFileURL, _ in
+            let destination: DownloadRequest.Destination = { [weak self] tempFileURL, _ in
                 func temporaryDirectory() -> URL {
                     if #available(iOS 10.0, *) {
                         return FileManager.default.temporaryDirectory
@@ -221,7 +208,7 @@ private extension AlamofireNetworkService {
                 }
                 
                 let defaultFileUrl = temporaryDirectory().appendingPathComponent(tempFileURL.lastPathComponent)
-                let defaultOptions: DownloadRequest.DownloadOptions = [.removePreviousFile, .createIntermediateDirectories]
+                let defaultOptions: DownloadRequest.Options = [.removePreviousFile, .createIntermediateDirectories]
                 guard let self = self else { return (defaultFileUrl, defaultOptions) }
                 
                 let fileUrl = self.configuration.sessionTemporaryFilesDirectory?.appendingPathComponent(tempFileURL.lastPathComponent) ?? defaultFileUrl
@@ -232,6 +219,9 @@ private extension AlamofireNetworkService {
                                            parameters: call.request.parameters,
                                            encoding: encoding,
                                            headers: headers,
+                                           requestModifier: {
+                                                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                                           },
                                            to: destination)
             call.token = request
             appendProgress(request, queue: call.queue) { [weak call] progress in
@@ -243,7 +233,10 @@ private extension AlamofireNetworkService {
                                           method: method,
                                           parameters: call.request.parameters,
                                           encoding: encoding,
-                                          headers: headers)
+                                          headers: headers,
+                                          requestModifier: {
+                                                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                                          })
             call.token = request
             appendProgress(request, queue: call.queue) { [weak call] progress in
                 call?.progress.forEach { $0(progress) }
@@ -276,8 +269,8 @@ private extension AlamofireNetworkService {
         return url.appendingPathComponent(request.path)
     }
 
-    func constructHeaders(withRequest request: AnyRequestable) -> [String : String] {
-        return (defaultHeaders ?? [:]) + (request.headers ?? [:])
+    func constructHeaders(withRequest request: AnyRequestable) -> HTTPHeaders {
+        .init((defaultHeaders ?? [:]) + (request.headers ?? [:]))
     }
 }
 
@@ -361,10 +354,10 @@ private extension AlamofireNetworkService {
     func appendResponse(_ aRequest: Alamofire.DataRequest,
                         call: AlamofireRequestCall,
                         completion: @escaping RequestCompletion) -> Self {
-        var result: EmptyResponse!
+        var result: TSKit_Networking.EmptyResponse!
         
         /// Captures success if at least one handler returned success otherwise first error.
-        func setResult(_ localResult: EmptyResponse) {
+        func setResult(_ localResult: TSKit_Networking.EmptyResponse) {
             guard result != nil else {
                 result = localResult
                 return
@@ -450,10 +443,10 @@ private extension AlamofireNetworkService {
     func appendResponse(_ aRequest: Alamofire.DownloadRequest,
                         call: AlamofireRequestCall,
                         completion: @escaping RequestCompletion) -> Self {
-        var result: EmptyResponse!
+        var result: TSKit_Networking.EmptyResponse!
         
         /// Captures success if at least one handler returned success otherwise first error.
-        func setResult(_ localResult: EmptyResponse) {
+        func setResult(_ localResult: TSKit_Networking.EmptyResponse) {
             guard result != nil else {
                 result = localResult
                 return
@@ -539,7 +532,7 @@ private extension AlamofireNetworkService {
                                 value: Any?,
                                 rawData: Data?,
                                 kind: ResponseKind,
-                                call: AlamofireRequestCall) -> EmptyResponse {
+                                call: AlamofireRequestCall) -> TSKit_Networking.EmptyResponse {
         guard call.token != nil else {
             log?.verbose(tag: self)("Request has been cancelled and will be ignored")
             return .success(())

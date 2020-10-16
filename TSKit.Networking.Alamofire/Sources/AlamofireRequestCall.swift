@@ -49,7 +49,7 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
     }
     
     public var debugDescription: String {
-        return token?.debugDescription ?? request.description
+        return token?.description ?? request.description
     }
 }
 
