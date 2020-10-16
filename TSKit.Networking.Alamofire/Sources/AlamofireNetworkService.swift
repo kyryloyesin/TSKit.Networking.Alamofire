@@ -36,6 +36,10 @@ public class AlamofireNetworkService: AnyNetworkService {
     }
 
     public required init(configuration: AnyNetworkServiceConfiguration) {
+        let sessionConfiguration = configuration.sessionConfiguration
+        if let timeout = configuration.timeoutInterval {
+            sessionConfiguration.timeoutIntervalForRequest = timeout
+        }
         manager = Alamofire.Session(configuration: configuration.sessionConfiguration,
                                     startRequestsImmediately: false)
         self.configuration = configuration
@@ -189,7 +193,9 @@ private extension AlamofireNetworkService {
             method: method,
             headers: headers,
             requestModifier: {
-                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                if let timeout = call.request.timeoutInterval ?? self.configuration.timeoutInterval {
+                    $0.timeoutInterval = timeout
+                }
             })
             appendProgress(uploadRequest, queue: call.queue) { [weak call] progress in
                 call?.progress.forEach { $0(progress) }
@@ -220,7 +226,9 @@ private extension AlamofireNetworkService {
                                            encoding: encoding,
                                            headers: headers,
                                            requestModifier: {
-                                                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                                            if let timeout = call.request.timeoutInterval ?? self.configuration.timeoutInterval {
+                                                $0.timeoutInterval = timeout
+                                            }
                                            },
                                            to: destination)
             call.token = request
@@ -235,7 +243,9 @@ private extension AlamofireNetworkService {
                                           encoding: encoding,
                                           headers: headers,
                                           requestModifier: {
-                                                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                                            if let timeout = call.request.timeoutInterval ?? self.configuration.timeoutInterval {
+                                                $0.timeoutInterval = timeout
+                                            }
                                           })
             call.token = request
             appendProgress(request, queue: call.queue) { [weak call] progress in
