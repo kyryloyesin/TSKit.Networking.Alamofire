@@ -187,7 +187,10 @@ private extension AlamofireNetworkService {
             },
             to: url,
             method: method,
-            headers: headers)
+            headers: headers,
+            requestModifier: {
+                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+            })
             appendProgress(uploadRequest, queue: call.queue) { progress in
                 call.progress.forEach { $0(progress) }
             }.appendResponse(uploadRequest, call: call, completion: completion)
@@ -216,6 +219,9 @@ private extension AlamofireNetworkService {
                                            parameters: call.request.parameters,
                                            encoding: encoding,
                                            headers: headers,
+                                           requestModifier: {
+                                                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                                           },
                                            to: destination)
             call.token = request
             appendProgress(request, queue: call.queue) { progress in
@@ -227,7 +233,10 @@ private extension AlamofireNetworkService {
                                           method: method,
                                           parameters: call.request.parameters,
                                           encoding: encoding,
-                                          headers: headers)
+                                          headers: headers,
+                                          requestModifier: {
+                                                $0.timeoutInterval = self.manager.session.configuration.timeoutIntervalForRequest
+                                          })
             call.token = request
             appendProgress(request, queue: call.queue) { progress in
                 call.progress.forEach { $0(progress) }
