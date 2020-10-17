@@ -580,12 +580,14 @@ private extension AlamofireNetworkService {
             call.errorHandler?.handle(request: call.request,
                                       response: nil,
                                       error: error,
+                                      sessionError: error?.asAFError?.underlyingError,
                                       reason: .unreachable,
                                       body: nil)
         
             return .failure(.init(request: call.request,
                                   response: nil,
                                   error: error,
+                                  sessionError: error?.asAFError?.underlyingError,
                                   reason: .unreachable,
                                   body: nil))
         }
@@ -609,12 +611,14 @@ private extension AlamofireNetworkService {
             call.errorHandler?.handle(request: call.request,
                                       response: httpResponse,
                                       error: error,
+                                      sessionError: error?.asAFError?.underlyingError,
                                       reason: .skipped,
                                       body: value)
             
             return .failure(.init(request: call.request,
                                   response: httpResponse,
                                   error: error,
+                                  sessionError: error?.asAFError?.underlyingError,
                                   reason: .skipped,
                                   body: value))
         }
@@ -648,11 +652,13 @@ private extension AlamofireNetworkService {
             call.errorHandler?.handle(request: call.request,
                                       response: httpResponse,
                                       error: error,
+                                      sessionError: error.asAFError?.underlyingError,
                                       reason: .httpError,
                                       body: value)
             return .failure(.init(request: call.request,
                                   response: httpResponse,
                                   error: error,
+                                  sessionError: error.asAFError?.underlyingError,
                                   reason: .httpError,
                                   body: value))
         }
@@ -670,11 +676,13 @@ private extension AlamofireNetworkService {
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
+                                              sessionError: nil,
                                               reason: .deserializationFailure,
                                               body: value)
                     return .failure(.init(request: call.request,
                                           response: httpResponse,
                                           error: constructionError,
+                                          sessionError: nil,
                                           reason: .deserializationFailure,
                                           body: value))
                 }
@@ -695,11 +703,13 @@ private extension AlamofireNetworkService {
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
+                                              sessionError: error.underlyingError,
                                               reason: .deserializationFailure,
                                               body: value)
                     return .failure(.init(request: call.request,
                                           response: httpResponse,
                                           error: error,
+                                          sessionError: error.underlyingError,
                                           reason: .deserializationFailure,
                                           body: value))
                 }
@@ -714,11 +724,13 @@ private extension AlamofireNetworkService {
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
+                                              sessionError: error.underlyingError,
                                               reason: .deserializationFailure,
                                               body: value)
                     return .failure(.init(request: call.request,
                                           response: httpResponse,
                                           error: constructionError,
+                                          sessionError: error.underlyingError,
                                           reason: .deserializationFailure,
                                           body: value))
                 }
@@ -727,11 +739,13 @@ private extension AlamofireNetworkService {
                 call.errorHandler?.handle(request: call.request,
                                           response: httpResponse,
                                           error: error,
+                                          sessionError: error.asAFError?.underlyingError,
                                           reason: .httpError,
                                           body: value)
                 return .failure(.init(request: call.request,
                                       response: httpResponse,
                                       error: error,
+                                      sessionError: error.asAFError?.underlyingError,
                                       reason: .httpError,
                                       body: value))
             }

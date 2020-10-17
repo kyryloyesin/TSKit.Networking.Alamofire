@@ -71,14 +71,15 @@ struct ErrorHandler {
     mutating func handle(request: AnyRequestable,
                          response: HTTPURLResponse?,
                          error: Error?,
+                         sessionError: Error?,
                          reason: NetworkServiceErrorReason,
                          body: Any?) {
-        
         let handler = self.handler
         self.handler = nil
         handler?(errorType.init(request: request,
                                 response: response,
                                 error: error,
+                                sessionError: sessionError,
                                 reason: reason,
                                 body: body))
     }
