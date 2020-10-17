@@ -192,8 +192,8 @@ private extension AlamofireNetworkService {
             to: url,
             method: method,
             headers: headers,
-            requestModifier: {
-                if let timeout = call.request.timeoutInterval ?? self.configuration.timeoutInterval {
+            requestModifier: { [weak call, weak self] in
+                if let timeout = call?.request.timeoutInterval ?? self?.configuration.timeoutInterval {
                     $0.timeoutInterval = timeout
                 }
             })
@@ -225,8 +225,8 @@ private extension AlamofireNetworkService {
                                            parameters: call.request.parameters,
                                            encoding: encoding,
                                            headers: headers,
-                                           requestModifier: {
-                                            if let timeout = call.request.timeoutInterval ?? self.configuration.timeoutInterval {
+                                           requestModifier: { [weak call, weak self] in
+                                            if let timeout = call?.request.timeoutInterval ?? self?.configuration.timeoutInterval {
                                                 $0.timeoutInterval = timeout
                                             }
                                            },
@@ -242,8 +242,8 @@ private extension AlamofireNetworkService {
                                           parameters: call.request.parameters,
                                           encoding: encoding,
                                           headers: headers,
-                                          requestModifier: {
-                                            if let timeout = call.request.timeoutInterval ?? self.configuration.timeoutInterval {
+                                          requestModifier: { [weak call, weak self] in
+                                            if let timeout = call?.request.timeoutInterval ?? self?.configuration.timeoutInterval {
                                                 $0.timeoutInterval = timeout
                                             }
                                           })
