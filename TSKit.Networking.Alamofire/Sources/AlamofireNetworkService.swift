@@ -676,6 +676,25 @@ private extension AlamofireNetworkService {
                                           reason: .deserializationFailure,
                                           body: value))
                 }
+            } else if let error = error as? AFError,
+                      error.isResponseSerializationError {
+                // If Alamofire decided to fail serialization, try to process response anyways.
+                do {
+                    let response = try responseHandler.responseType.init(response: httpResponse, body: value)
+                    responseHandler.handler(response)
+                } catch let constructionError {
+                    log?.error("Failed to construct response of type '\(responseHandler.responseType)' using body: \(value ?? "no body")")
+                    call.errorHandler?.handle(request: call.request,
+                                              response: httpResponse,
+                                              error: constructionError,
+                                              reason: .deserializationFailure,
+                                              body: value)
+                    return .failure(.init(request: call.request,
+                                          response: httpResponse,
+                                          error: constructionError,
+                                          reason: .deserializationFailure,
+                                          body: value))
+                }
             } else {
                 // If it is any other error then report the error.
                 call.errorHandler?.handle(request: call.request,
