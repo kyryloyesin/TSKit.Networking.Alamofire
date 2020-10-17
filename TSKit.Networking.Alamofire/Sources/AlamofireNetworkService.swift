@@ -815,3 +815,26 @@ private struct PathEncoding: Alamofire.ParameterEncoding {
         return urlRequest
     }
 }
+
+class LoggingRetryPolicy: RetryPolicy {
+    
+    let log: AnyLogger?
+    
+    init(retryLimit: UInt = RetryPolicy.defaultRetryLimit,
+         exponentialBackoffBase: UInt = RetryPolicy.defaultExponentialBackoffBase,
+         exponentialBackoffScale: Double = RetryPolicy.defaultExponentialBackoffScale,
+         retryableHTTPMethods: Set<HTTPMethod> = RetryPolicy.defaultRetryableHTTPMethods,
+         retryableHTTPStatusCodes: Set<Int> = RetryPolicy.defaultRetryableHTTPStatusCodes,
+         retryableURLErrorCodes: Set<URLError.Code> = RetryPolicy.defaultRetryableURLErrorCodes,
+         log: AnyLogger?) {
+        self.log = log
+        super.init(retryLimit: retryLimit, exponentialBackoffBase: exponentialBackoffBase, exponentialBackoffScale: exponentialBackoffScale, retryableHTTPMethods: retryableHTTPMethods, retryableHTTPStatusCodes: retryableHTTPStatusCodes, retryableURLErrorCodes: retryableURLErrorCodes)
+    }
+    
+    override func retry(_ request: Request, for session: Session, dueTo error: Error, completion: @escaping (RetryResult) -> Void) {
+        super.retry(request, for: session, dueTo: error, completion: { [weak self] result in
+            self?.log?.verbose(tag: self)("Decided policy for \(request): \(result)")
+            completion(result)
+        })
+    }
+}

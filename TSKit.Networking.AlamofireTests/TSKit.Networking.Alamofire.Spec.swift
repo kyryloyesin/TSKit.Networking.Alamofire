@@ -20,13 +20,14 @@ class InspectableService: AlamofireNetworkService {
         retier = MockedRequestRetrier(retryLimit: retryLimit,
                                       retryableHTTPMethods: retryableHTTPMethods,
                                       retryableHTTPStatusCodes: retryableHTTPStatusCodes,
-                                      retryableURLErrorCodes: retryableURLErrorCodes)
+                                      retryableURLErrorCodes: retryableURLErrorCodes,
+                                      log: try! Injector.inject())
         return retier
     }
 }
 
 
-class MockedRequestRetrier: RetryPolicy {
+class MockedRequestRetrier: LoggingRetryPolicy {
     
     var retriesCount: UInt = 0
     
@@ -80,7 +81,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
         let criticalTimeout = DispatchTimeInterval.seconds(5)
         describe("Foreground alamofire network service") {
             beforeEach {
-                Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
+                Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: false) {
                     let logger = Logger()
                     logger.writers = [PrintLogEntryWriter()]
                     return logger
