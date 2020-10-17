@@ -141,6 +141,18 @@ public class AlamofireNetworkService: AnyNetworkService {
         }
         return supportedCall
     }
+    
+    /// Method that constructs retrier interceptor.
+    /// Used for testing.
+    func makeRetrier(retryLimit: UInt,
+                     retryableHTTPMethods: Set<HTTPMethod>,
+                     retryableHTTPStatusCodes: Set<Int>,
+                     retryableURLErrorCodes: Set<URLError.Code>) -> RequestInterceptor {
+        return RetryPolicy(retryLimit: retryLimit,
+                           retryableHTTPMethods: retryableHTTPMethods,
+                           retryableHTTPStatusCodes: retryableHTTPStatusCodes,
+                           retryableURLErrorCodes: retryableURLErrorCodes)
+    }
 }
 
 // MARK: - Multiple requests.
@@ -192,6 +204,7 @@ private extension AlamofireNetworkService {
             to: url,
             method: method,
             headers: headers,
+            interceptor: constructRetrier(with: call.request),
             requestModifier: { [weak call, weak self] in
                 if let timeout = call?.request.timeoutInterval ?? self?.configuration.timeoutInterval {
                     $0.timeoutInterval = timeout
@@ -225,6 +238,7 @@ private extension AlamofireNetworkService {
                                            parameters: call.request.parameters,
                                            encoding: encoding,
                                            headers: headers,
+                                           interceptor: constructRetrier(with: call.request),
                                            requestModifier: { [weak call, weak self] in
                                             if let timeout = call?.request.timeoutInterval ?? self?.configuration.timeoutInterval {
                                                 $0.timeoutInterval = timeout
@@ -242,6 +256,7 @@ private extension AlamofireNetworkService {
                                           parameters: call.request.parameters,
                                           encoding: encoding,
                                           headers: headers,
+                                          interceptor: constructRetrier(with: call.request),
                                           requestModifier: { [weak call, weak self] in
                                             if let timeout = call?.request.timeoutInterval ?? self?.configuration.timeoutInterval {
                                                 $0.timeoutInterval = timeout
@@ -281,6 +296,18 @@ private extension AlamofireNetworkService {
 
     func constructHeaders(withRequest request: AnyRequestable) -> HTTPHeaders {
         .init((defaultHeaders ?? [:]) + (request.headers ?? [:]))
+    }
+    
+    func constructRetrier(with request: AnyRequestable) -> RequestInterceptor? {
+        let requestRetryAttempts = request.retryAttempts?.nonZero
+        guard requestRetryAttempts != nil || configuration.retriableMethods.contains(request.method) else { return nil }
+        guard let retries = requestRetryAttempts ?? configuration.retryAttempts?.nonZero else { return nil }
+        
+        let failures = request.retriableFailures ?? configuration.retriableFailures ?? RetryPolicy.defaultRetryableURLErrorCodes
+        return makeRetrier(retryLimit: retries,
+                           retryableHTTPMethods: [HTTPMethod(request.method)],
+                           retryableHTTPStatusCodes: Set(100..<600).subtracting(request.statusCodes),
+                           retryableURLErrorCodes: failures)
     }
 }
 
@@ -720,12 +747,14 @@ private extension Alamofire.HTTPMethod {
 
     init(_ method: RequestMethod) {
         switch method {
-        case .get: self = .get
-        case .post: self = .post
-        case .patch: self = .patch
-        case .delete: self = .delete
-        case .put: self = .put
-        case .head: self = .head
+            case .get: self = .get
+            case .post: self = .post
+            case .patch: self = .patch
+            case .delete: self = .delete
+            case .put: self = .put
+            case .head: self = .head
+            case .trace: self = .trace
+            case .options: self = .options
         }
     }
 }
