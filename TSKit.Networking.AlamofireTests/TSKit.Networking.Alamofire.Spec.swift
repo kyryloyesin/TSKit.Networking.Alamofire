@@ -4,13 +4,49 @@ import TSKit_Networking
 import TSKit_Core
 import TSKit_Injection
 import TSKit_Log
+import Alamofire
 
 @testable import TSKit_Networking_Alamofire
 
+
+class InspectableService: AlamofireNetworkService {
+    
+    var retier: MockedRequestRetrier!
+    
+    override func makeRetrier(retryLimit: UInt,
+                              retryableHTTPMethods: Set<HTTPMethod>,
+                              retryableHTTPStatusCodes: Set<Int>,
+                              retryableURLErrorCodes: Set<URLError.Code>) -> RequestInterceptor {
+        retier = MockedRequestRetrier(retryLimit: retryLimit,
+                                      retryableHTTPMethods: retryableHTTPMethods,
+                                      retryableHTTPStatusCodes: retryableHTTPStatusCodes,
+                                      retryableURLErrorCodes: retryableURLErrorCodes)
+        return retier
+    }
+}
+
+
+class MockedRequestRetrier: RetryPolicy {
+    
+    var retriesCount: UInt = 0
+    
+    override func retry(_ request: Request, for session: Session, dueTo error: Error, completion: @escaping (RetryResult) -> Void) {
+        super.retry(request, for: session, dueTo: error, completion: { result in
+            switch result {
+                case .retry, .retryWithDelay: self.retriesCount += 1
+                default: break
+            }
+            completion(result)
+        })
+    }
+}
+
 class AlamofireNetworkServiceSpec: QuickSpec {
     
-    private func makeCall(for request: AnyMockedRequestable.Type, handler: @escaping () -> Void) -> AnyRequestCall {
-        let request = request.init()
+    private func makeCall(for request: AnyMockedRequestable.Type, retries: UInt? = nil, handler: @escaping () -> Void) -> AnyRequestCall {
+        let request = transform(request.init()) {
+            $0.retryAttempts = retries
+        }
         return service.builder(for: request)
                       .dispatch(to: .global())
                       .response(SuccessResponse.self) {
@@ -24,8 +60,10 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                       .make()!
     }
     
-    private func makeStatusCall<T>(for request: T.Type, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
-        return service.builder(for: request.init())
+    private func makeStatusCall<T>(for request: T.Type, retries: UInt? = nil, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
+        return service.builder(for: transform(request.init()) {
+            $0.retryAttempts = retries
+        })
             .dispatch(to: .global())
             .response(SuccessResponse.self, forStatuses: 200) {
                 result(true, $0.response.statusCode)
@@ -36,7 +74,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
             }.make()!
     }
     
-    private var service: AlamofireNetworkService!
+    private var service: InspectableService!
     
     override func spec() {
         let criticalTimeout = DispatchTimeInterval.seconds(5)
@@ -116,6 +154,16 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                             expect(isSuccess).toEventually(equal([true]), timeout: criticalTimeout)
                             expect(receivedStatuses).toEventually(equal([404]), timeout: criticalTimeout)
                         }
+                    }
+                }
+                
+                context("and configured retry") {
+                    let retries: UInt = 4
+                    
+                    it("should try \(retries) times request") {
+                        let call = self.makeCall(for: FailingRequest.self, retries: retries) { }
+                        self.service.request(call)
+                        expect(self.service.retier.retriesCount).toEventually(equal(retries), timeout: criticalTimeout)
                     }
                 }
             }
@@ -203,6 +251,9 @@ class AlamofireNetworkServiceSpec: QuickSpec {
 }
 
 private protocol AnyMockedRequestable: AnyRequestable {
+    
+    var retryAttempts: UInt? { get set }
+    
     init()
 }
 
@@ -211,6 +262,8 @@ private struct SuccessRequest: AnyMockedRequestable {
     let method = RequestMethod.get
     
     let path: String = ""
+    
+    var retryAttempts: UInt? = nil
 }
 
 private struct FailingRequest: AnyMockedRequestable {
@@ -218,6 +271,8 @@ private struct FailingRequest: AnyMockedRequestable {
     let method = RequestMethod.get
     
     let path: String = "not_existed"
+        
+    var retryAttempts: UInt? = nil
 }
 
 private struct FailingResponse: AnyResponse {

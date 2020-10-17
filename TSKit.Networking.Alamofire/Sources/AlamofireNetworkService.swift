@@ -141,6 +141,18 @@ public class AlamofireNetworkService: AnyNetworkService {
         }
         return supportedCall
     }
+    
+    /// Method that constructs retrier interceptor.
+    /// Used for testing.
+    func makeRetrier(retryLimit: UInt,
+                     retryableHTTPMethods: Set<HTTPMethod>,
+                     retryableHTTPStatusCodes: Set<Int>,
+                     retryableURLErrorCodes: Set<URLError.Code>) -> RequestInterceptor {
+        return RetryPolicy(retryLimit: retryLimit,
+                           retryableHTTPMethods: retryableHTTPMethods,
+                           retryableHTTPStatusCodes: retryableHTTPStatusCodes,
+                           retryableURLErrorCodes: retryableURLErrorCodes)
+    }
 }
 
 // MARK: - Multiple requests.
@@ -286,13 +298,13 @@ private extension AlamofireNetworkService {
         .init((defaultHeaders ?? [:]) + (request.headers ?? [:]))
     }
     
-    func constructRetrier(with request: AnyRequestable) -> RetryPolicy? {
+    func constructRetrier(with request: AnyRequestable) -> RequestInterceptor? {
         let requestRetryAttempts = request.retryAttempts?.nonZero
         guard requestRetryAttempts != nil || configuration.retriableMethods.contains(request.method) else { return nil }
         guard let retries = requestRetryAttempts ?? configuration.retryAttempts?.nonZero else { return nil }
         
         let failures = request.retriableFailures ?? configuration.retriableFailures ?? RetryPolicy.defaultRetryableURLErrorCodes
-        return RetryPolicy(retryLimit: retries,
+        return makeRetrier(retryLimit: retries,
                            retryableHTTPMethods: [HTTPMethod(request.method)],
                            retryableHTTPStatusCodes: Set(100..<600).subtracting(request.statusCodes),
                            retryableURLErrorCodes: failures)
