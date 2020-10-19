@@ -148,10 +148,11 @@ public class AlamofireNetworkService: AnyNetworkService {
                      retryableHTTPMethods: Set<HTTPMethod>,
                      retryableHTTPStatusCodes: Set<Int>,
                      retryableURLErrorCodes: Set<URLError.Code>) -> RequestInterceptor {
-        return RetryPolicy(retryLimit: retryLimit,
-                           retryableHTTPMethods: retryableHTTPMethods,
-                           retryableHTTPStatusCodes: retryableHTTPStatusCodes,
-                           retryableURLErrorCodes: retryableURLErrorCodes)
+        return LoggingRetryPolicy(retryLimit: retryLimit,
+                                  retryableHTTPMethods: retryableHTTPMethods,
+                                  retryableHTTPStatusCodes: retryableHTTPStatusCodes,
+                                  retryableURLErrorCodes: retryableURLErrorCodes,
+                                  log: log)
     }
 }
 
@@ -303,10 +304,11 @@ private extension AlamofireNetworkService {
         guard requestRetryAttempts != nil || configuration.retriableMethods.contains(request.method) else { return nil }
         guard let retries = requestRetryAttempts ?? configuration.retryAttempts?.nonZero else { return nil }
         
+        let statuses = configuration.retriableStatuses ?? request.retriableStatuses ?? RetryPolicy.defaultRetryableHTTPStatusCodes
         let failures = request.retriableFailures ?? configuration.retriableFailures ?? RetryPolicy.defaultRetryableURLErrorCodes
         return makeRetrier(retryLimit: retries,
                            retryableHTTPMethods: [HTTPMethod(request.method)],
-                           retryableHTTPStatusCodes: Set(100..<600).subtracting(request.statusCodes),
+                           retryableHTTPStatusCodes: statuses,
                            retryableURLErrorCodes: failures)
     }
 }

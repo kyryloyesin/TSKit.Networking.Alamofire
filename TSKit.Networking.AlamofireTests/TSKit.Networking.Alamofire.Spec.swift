@@ -161,7 +161,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                 context("and configured retry") {
                     let retries: UInt = 4
                     
-                    it("should try \(retries) times request") {
+                    fit("should try \(retries) times request") {
                         let call = self.makeCall(for: FailingRequest.self, retries: retries) { }
                         self.service.request(call)
                         expect(self.service.retier.retriesCount).toEventually(equal(retries), timeout: criticalTimeout)
@@ -274,6 +274,8 @@ private struct FailingRequest: AnyMockedRequestable {
     let path: String = "not_existed"
         
     var retryAttempts: UInt? = nil
+    
+    let retriableStatuses: Set<Int>? = [404]
 }
 
 private struct FailingResponse: AnyResponse {
