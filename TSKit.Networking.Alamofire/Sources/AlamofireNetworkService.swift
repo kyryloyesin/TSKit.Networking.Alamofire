@@ -9,7 +9,7 @@ import TSKit_Injection
 import TSKit_Core
 import TSKit_Log
 
-public class AlamofireNetworkService: AnyNetworkService {
+public class AlamofireNetworkService: AnyNetworkService, RequestAdapter {
 
     private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
 
@@ -43,6 +43,7 @@ public class AlamofireNetworkService: AnyNetworkService {
         manager = Alamofire.SessionManager(configuration: configuration.sessionConfiguration)
         manager.startRequestsImmediately = false
         self.configuration = configuration
+        manager.adapter = self
     }
 
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
@@ -140,6 +141,12 @@ public class AlamofireNetworkService: AnyNetworkService {
             preconditionFailure(message)
         }
         return supportedCall
+    }
+    
+    public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
+        transform(urlRequest) {
+            $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
+        }
     }
 }
 
