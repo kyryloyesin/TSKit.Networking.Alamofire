@@ -9,7 +9,7 @@ import TSKit_Injection
 import TSKit_Core
 import TSKit_Log
 
-public class AlamofireNetworkService: AnyNetworkService {
+public class AlamofireNetworkService: AnyNetworkService, RequestAdapter {
 
     private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
 
@@ -43,6 +43,7 @@ public class AlamofireNetworkService: AnyNetworkService {
         manager = Alamofire.SessionManager(configuration: configuration.sessionConfiguration)
         manager.startRequestsImmediately = false
         self.configuration = configuration
+        manager.adapter = self
     }
 
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
@@ -141,6 +142,12 @@ public class AlamofireNetworkService: AnyNetworkService {
         }
         return supportedCall
     }
+    
+    public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
+        transform(urlRequest) {
+            $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
+        }
+    }
 }
 
 // MARK: - Multiple requests.
@@ -210,29 +217,21 @@ private extension AlamofireNetworkService {
                                }
                            })
             return wrapper
-        } else if isBackground {
-            let destination: DownloadRequest.DownloadFileDestination = { [weak self] tempFileURL, _ in
-                func temporaryDirectory() -> URL {
-                    if #available(iOS 10.0, *) {
-                        return FileManager.default.temporaryDirectory
-                    } else {
-                        return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-                    }
+        } else if call.request is AnyFileRequestable || isBackground {
+            
+            let destination = configuration.sessionTemporaryFilesDirectory.flatMap { (configuredDirectory: URL) -> DownloadRequest.DownloadFileDestination  in
+                { tempFileURL, _ in
+                    (configuredDirectory.appendingPathComponent(tempFileURL.lastPathComponent),
+                     [.removePreviousFile, .createIntermediateDirectories])
                 }
-                
-                let defaultFileUrl = temporaryDirectory().appendingPathComponent(tempFileURL.lastPathComponent)
-                let defaultOptions: DownloadRequest.DownloadOptions = [.removePreviousFile, .createIntermediateDirectories]
-                guard let self = self else { return (defaultFileUrl, defaultOptions) }
-                
-                let fileUrl = self.configuration.sessionTemporaryFilesDirectory?.appendingPathComponent(tempFileURL.lastPathComponent) ?? defaultFileUrl
-                return (fileUrl, defaultOptions)
             }
+            
             let request = manager.download(url,
                                            method: method,
                                            parameters: call.request.parameters,
                                            encoding: encoding,
                                            headers: headers,
-                                           to: destination)
+                                           to: destination ?? DownloadRequest.suggestedDownloadDestination(for: .cachesDirectory))
             call.token = request
             appendProgress(request, queue: call.queue) { [weak call] progress in
                 call?.progress.forEach { $0(progress) }
@@ -382,9 +381,9 @@ private extension AlamofireNetworkService {
         
         let handlingGroup = DispatchGroup()
         
-        kinds.forEach {
+        kinds.forEach { kind in
             handlingGroup.enter() // enter group for each scheduled response.
-            switch $0 {
+            switch kind {
                 case .json:
                     aRequest.responseJSON(queue: call.queue) { [weak self] in
                         guard let self = self else { return }
@@ -398,7 +397,10 @@ private extension AlamofireNetworkService {
                         handlingGroup.leave()
                     }
                 
-                case .data:
+                case .data, .file:
+                    if kind == .file {
+                        log?.warning(tag: self)("Files are not supported for `AnyRequestable`. Use `AnyFileRequestable` to utilize `ResponseKind.file`. Handling will fall back to `ResponseKind.data`.")
+                    }
                     aRequest.responseData(queue: call.queue) { [weak self] in
                         guard let self = self else { return }
                         let result = self.handleResponse($0.response,
@@ -423,7 +425,7 @@ private extension AlamofireNetworkService {
                         setResult(result)
                         handlingGroup.leave()
                 }
-                
+                    
                 case .empty:
                     aRequest.response(queue: call.queue) { [weak self] in
                         guard let self = self else { return }
@@ -512,6 +514,20 @@ private extension AlamofireNetworkService {
                         setResult(result)
                         handlingGroup.leave()
                 }
+                    
+                case .file:
+                    aRequest.response { [weak self] in
+                        guard let self = self else { return }
+                        
+                        let result = self.handleResponse($0.response,
+                                                         error: $0.error,
+                                                         value: $0.destinationURL,
+                                                         rawData: nil,
+                                                         kind: .file,
+                                                         call: call)
+                        setResult(result)
+                        handlingGroup.leave()
+                    }
                 
                 case .empty:
                     aRequest.response(queue: call.queue) { [weak self] in
@@ -567,6 +583,7 @@ private extension AlamofireNetworkService {
                 case .string: return String(data: data, encoding: .utf8)
                 case .json: return try? JSONSerialization.jsonObject(with: data, options: [])
                 case .data, .empty: return data
+                case .file: return value as? URL
             }
         }()
         
