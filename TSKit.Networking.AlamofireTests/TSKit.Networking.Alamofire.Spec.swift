@@ -1,3 +1,4 @@
+import Foundation
 import Quick
 import Nimble
 import TSKit_Networking
@@ -9,19 +10,25 @@ import TSKit_Log
 
 class AlamofireNetworkServiceSpec: QuickSpec {
     
-    private func makeCall(for request: AnyMockedRequestable.Type, handler: @escaping () -> Void) -> AnyRequestCall {
-        let request = request.init()
-        return service.builder(for: request)
-                      .dispatch(to: .global())
-                      .response(SuccessResponse.self) {
-                        print($0)
-                        handler()
-                        
-        }.error {
-            print($0)
-            handler()
-        }
-                      .make()!
+    private func makeCall<ResponseType: AnyResponse>(for request: AnyMockedRequestable.Type,
+                                                     response: ResponseType.Type,
+                                                     handler: @escaping (_ response: ResponseType?) -> Void) -> AnyRequestCall {
+        service.builder(for: request.init())
+            .dispatch(to: .global())
+            .response(response) {
+                print($0)
+                handler($0)
+                
+            }.error {
+                print($0)
+                handler(nil)
+            }
+            .make()!
+    }
+    
+    private func makeCall(for request: AnyMockedRequestable.Type,
+                          handler: @escaping () -> Void) -> AnyRequestCall {
+        makeCall(for: request, response: SuccessResponse.self, handler: { _ in handler() })
     }
     
     private func makeStatusCall<T>(for request: T.Type, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
@@ -39,7 +46,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
     private var service: AlamofireNetworkService!
     
     override func spec() {
-        let criticalTimeout: TimeInterval = 5
+        let criticalTimeout = DispatchTimeInterval.seconds(5)
         describe("Foreground alamofire network service") {
             beforeEach {
                 Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
@@ -116,6 +123,18 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                             expect(isSuccess).toEventually(equal([true]), timeout: criticalTimeout)
                             expect(receivedStatuses).toEventually(equal([404]), timeout: criticalTimeout)
                         }
+                    }
+                }
+                
+                context("that downloads file") {
+                    fit("should provide temporary url to the file") {
+                        var file: URL?
+                        self.service.request(self.makeCall(for: FileRequest.self, response: FileResponse.self) {
+                            file = $0?.file
+                            print("Received \(file)")
+                        })
+                        
+                        expect(file).toNotEventually(beNil(), timeout: criticalTimeout)
                     }
                 }
             }
@@ -217,6 +236,13 @@ private struct FailingRequest: AnyMockedRequestable {
     let path: String = "not_existed"
 }
 
+private struct FileRequest: AnyMockedRequestable, AnyFileRequestable {
+    
+    let method = RequestMethod.get
+    
+    let path = "https://raw.githubusercontent.com/adya/TSKit.Networking.Alamofire/master/Cartfile"
+}
+
 private struct FailingResponse: AnyResponse {
     
     static let kind = ResponseKind.string
@@ -237,6 +263,22 @@ private struct SuccessResponse: AnyResponse {
     
     init(response: HTTPURLResponse, body: Any?) throws {
         self.response = response
+    }
+    
+}
+
+private struct FileResponse: AnyFileResponse {
+    
+    static let kind = ResponseKind.file
+    
+    let response: HTTPURLResponse
+    
+    let file: URL
+    
+    init(response: HTTPURLResponse, body: Any?) throws {
+        guard let url = body as? URL else { throw URLError(.badURL) }
+        self.response = response
+        self.file = url
     }
     
 }
