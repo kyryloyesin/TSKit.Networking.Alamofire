@@ -218,12 +218,19 @@ private extension AlamofireNetworkService {
                            })
             return wrapper
         } else if call.request is AnyFileRequestable || isBackground {
+            let destination: DownloadRequest.DownloadFileDestination = { [weak self] tempFileURL, _ in
+                let directory = self?.configuration.sessionTemporaryFilesDirectory
+                    ?? FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+                    ?? {
+                        if #available(iOS 10.0, *) {
+                            return FileManager.default.temporaryDirectory
+                        } else {
+                            return URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+                        }
+                    }()
             
-            let destination = configuration.sessionTemporaryFilesDirectory.flatMap { (configuredDirectory: URL) -> DownloadRequest.DownloadFileDestination  in
-                { tempFileURL, _ in
-                    (configuredDirectory.appendingPathComponent(tempFileURL.lastPathComponent),
-                     [.removePreviousFile, .createIntermediateDirectories])
-                }
+                return (directory.appendingPathComponent(tempFileURL.lastPathComponent),
+                        [.removePreviousFile, .createIntermediateDirectories])
             }
             
             let request = manager.download(url,
@@ -231,7 +238,7 @@ private extension AlamofireNetworkService {
                                            parameters: call.request.parameters,
                                            encoding: encoding,
                                            headers: headers,
-                                           to: destination ?? DownloadRequest.suggestedDownloadDestination(for: .cachesDirectory))
+                                           to: destination)
             call.token = request
             appendProgress(request, queue: call.queue) { [weak call] progress in
                 call?.progress.forEach { $0(progress) }
