@@ -523,7 +523,7 @@ private extension AlamofireNetworkService {
                 }
                     
                 case .file:
-                    aRequest.response { [weak self] in
+                    aRequest.response(queue: call.queue) { [weak self] in
                         guard let self = self else { return }
                         
                         let result = self.handleResponse($0.response,
