@@ -9,7 +9,7 @@ import TSKit_Injection
 import TSKit_Core
 import TSKit_Log
 
-public class AlamofireNetworkService: AnyNetworkService, RequestAdapter {
+public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, RequestRetrier {
 
     private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
 
@@ -44,6 +44,7 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter {
         manager.startRequestsImmediately = false
         self.configuration = configuration
         manager.adapter = self
+        manager.retrier = self
     }
 
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
@@ -61,6 +62,7 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter {
             
             return isAllowed
         }
+        retiableCalls += calls.filter { $0.request.retryAttempts?.nonZero != nil }
         var capturedResult: EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
@@ -148,6 +150,29 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter {
             $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
         }
     }
+    
+    private var retiableCalls: [AlamofireRequestCall] = []
+    
+    public func should(_ manager: SessionManager,
+                       retry request: Request,
+                       with error: Error,
+                       completion: @escaping RequestRetryCompletion) {
+        guard let requestCall = retiableCalls.first(where: { $0.token?.request == request.request })?.request else {
+            return completion(false, 0)
+        }
+        
+        guard let maxRetries = requestCall.retryAttempts else { return completion(false, 0) }
+        
+        let isRetriableError = (error as? URLError).flatMap { requestCall.retriableFailures?.contains($0.code) } ?? true
+        let canRetryMore = request.retryCount <= maxRetries
+        let isRetriableStatus = request.response.flatMap { requestCall.retriableStatuses?.contains($0.statusCode) } ?? true
+        
+        let shouldRetry = (isRetriableStatus || isRetriableError) && canRetryMore
+        if !shouldRetry {
+            retiableCalls.removeFirst(where: { $0.token?.request == request.request })
+        }
+        completion(shouldRetry, 1)
+    }
 }
 
 // MARK: - Multiple requests.
@@ -212,6 +237,7 @@ private extension AlamofireNetworkService {
                                 wrapper.error = .init(request: request,
                                                       response: nil,
                                                       error: error,
+                                                      sessionError: error.asAFError?.underlyingError,
                                                       reason: .encodingFailure,
                                                       body: nil)
                                }
@@ -573,12 +599,14 @@ private extension AlamofireNetworkService {
             call.errorHandler?.handle(request: call.request,
                                       response: nil,
                                       error: error,
+                                      sessionError: error?.asAFError?.underlyingError,
                                       reason: .unreachable,
                                       body: nil)
         
             return .failure(.init(request: call.request,
                                   response: nil,
                                   error: error,
+                                  sessionError: error?.asAFError?.underlyingError,
                                   reason: .unreachable,
                                   body: nil))
         }
@@ -603,12 +631,14 @@ private extension AlamofireNetworkService {
             call.errorHandler?.handle(request: call.request,
                                       response: httpResponse,
                                       error: error,
+                                      sessionError: error?.asAFError?.underlyingError,
                                       reason: .skipped,
                                       body: value)
             
             return .failure(.init(request: call.request,
                                   response: httpResponse,
                                   error: error,
+                                  sessionError: error?.asAFError?.underlyingError,
                                   reason: .skipped,
                                   body: value))
         }
@@ -642,11 +672,13 @@ private extension AlamofireNetworkService {
             call.errorHandler?.handle(request: call.request,
                                       response: httpResponse,
                                       error: error,
+                                      sessionError: error.asAFError?.underlyingError,
                                       reason: .httpError,
                                       body: value)
             return .failure(.init(request: call.request,
                                   response: httpResponse,
                                   error: error,
+                                  sessionError: error.asAFError?.underlyingError,
                                   reason: .httpError,
                                   body: value))
         }
@@ -664,11 +696,13 @@ private extension AlamofireNetworkService {
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
+                                              sessionError: nil,
                                               reason: .deserializationFailure,
                                               body: value)
                     return .failure(.init(request: call.request,
                                           response: httpResponse,
                                           error: constructionError,
+                                          sessionError: nil,
                                           reason: .deserializationFailure,
                                           body: value))
                 }
@@ -689,11 +723,13 @@ private extension AlamofireNetworkService {
                     call.errorHandler?.handle(request: call.request,
                                               response: httpResponse,
                                               error: constructionError,
+                                              sessionError: nil,
                                               reason: .deserializationFailure,
                                               body: value)
                     return .failure(.init(request: call.request,
                                           response: httpResponse,
-                                          error: error,
+                                          error: constructionError,
+                                          sessionError: nil,
                                           reason: .deserializationFailure,
                                           body: value))
                 }
@@ -702,11 +738,13 @@ private extension AlamofireNetworkService {
                 call.errorHandler?.handle(request: call.request,
                                           response: httpResponse,
                                           error: error,
+                                          sessionError: error.asAFError?.underlyingError,
                                           reason: .httpError,
                                           body: value)
                 return .failure(.init(request: call.request,
                                       response: httpResponse,
                                       error: error,
+                                      sessionError: error.asAFError?.underlyingError,
                                       reason: .httpError,
                                       body: value))
             }
@@ -728,7 +766,16 @@ private extension Alamofire.HTTPMethod {
         case .delete: self = .delete
         case .put: self = .put
         case .head: self = .head
+        case .trace: self = .trace
+        case .options: self = .options
         }
+    }
+}
+
+private extension Error {
+    
+    var asAFError: AFError? {
+        self as? AFError
     }
 }
 
