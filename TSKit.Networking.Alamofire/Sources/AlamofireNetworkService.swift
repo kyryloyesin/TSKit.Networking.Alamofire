@@ -187,7 +187,10 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         let isRetriableStatus = { request.response.flatMap { retriableStatuses?.contains($0.statusCode) } ?? true }
         
         let shouldRetry = canRetryMore && (isRetriableStatus() || isRetriableError())
-        if !shouldRetry {
+        if shouldRetry {
+            log?.verbose(tag: self)("Retrying request \(requestCall). Attempt #\(request.retryCount + 1). Retrying after statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
+        } else {
+            log?.verbose(tag: self)("No more retries for request \(requestCall). Failing with statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
             removeCall()
         }
         completion(shouldRetry, 1)
