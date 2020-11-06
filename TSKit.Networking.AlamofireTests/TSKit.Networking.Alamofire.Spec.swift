@@ -6,47 +6,76 @@ import TSKit_Core
 import TSKit_Injection
 import TSKit_Log
 
+import Alamofire
 @testable import TSKit_Networking_Alamofire
+
+
+class InspectableService: AlamofireNetworkService {
+    
+    var retriesCount: UInt = 0 {
+        didSet {
+            print("I'M \(retriesCount)")
+        }
+    }
+    
+    override func should(_ manager: SessionManager, retry request: Request, with error: Error, completion: @escaping RequestRetryCompletion) {
+        super.should(manager, retry: request, with: error, completion: {
+            if $0 {
+                self.retriesCount += 1
+                print("RETRYING: \(self.retriesCount)")
+            }
+            completion($0, $1)
+        })
+    }
+}
 
 class AlamofireNetworkServiceSpec: QuickSpec {
     
     private func makeCall<ResponseType: AnyResponse>(for request: AnyMockedRequestable.Type,
+                                                     retries: UInt? = nil,
                                                      response: ResponseType.Type,
                                                      handler: @escaping (_ response: ResponseType?) -> Void) -> AnyRequestCall {
-        service.builder(for: request.init())
-            .dispatch(to: .global())
-            .response(response) {
-                print($0)
-                handler($0)
-                
-            }.error {
-                print($0)
-                handler(nil)
-            }
-            .make()!
+        service.builder(for: transform(request.init()) {
+            $0.retryAttempts = retries
+        })
+        .dispatch(to: .global())
+        .response(response) {
+            print($0)
+            handler($0)
+            
+        }.error {
+            print($0)
+            handler(nil)
+        }
+        .make()!
     }
     
     private func makeCall(for request: AnyMockedRequestable.Type,
+                          retries: UInt? = nil,
                           handler: @escaping () -> Void) -> AnyRequestCall {
-        makeCall(for: request, response: SuccessResponse.self, handler: { _ in handler() })
+        makeCall(for: request, retries: retries, response: SuccessResponse.self, handler: { _ in handler() })
     }
     
-    private func makeStatusCall<T>(for request: T.Type, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
-        return service.builder(for: request.init())
-            .dispatch(to: .global())
-            .response(SuccessResponse.self, forStatuses: 200) {
-                result(true, $0.response.statusCode)
-            }.response(FailingResponse.self, forStatuses: 404) {
-                result(true, $0.response.statusCode)
-            }.error { _ in
-                result(false, nil)
-            }.make()!
+    private func makeStatusCall<T>(for request: T.Type, retries: UInt? = nil, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
+        service.builder(for: transform(request.init()) {
+            $0.retryAttempts = retries
+        })
+        .dispatch(to: .global())
+        .response(SuccessResponse.self, forStatuses: 200) {
+            result(true, $0.response.statusCode)
+        }.response(FailingResponse.self, forStatuses: 404) {
+            result(true, $0.response.statusCode)
+        }.error { _ in
+            result(false, nil)
+        }.make()!
     }
     
-    private var service: AlamofireNetworkService!
+    private var service: InspectableService!
+    
+    private var configuration: ForegroundConfiguration!
     
     override func spec() {
-        let criticalTimeout = DispatchTimeInterval.seconds(5)
+        let criticalTimeout = DispatchTimeInterval.seconds(10)
         describe("Foreground alamofire network service") {
             beforeEach {
                 Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
@@ -54,7 +83,8 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                     logger.writers = [PrintLogEntryWriter()]
                     return logger
                 }])
-                self.service = .init(configuration: ForegroundConfiguration())
+                self.configuration = .init()
+                self.service = .init(configuration: self.configuration)
             }
         
             describe("when processing single request") {
@@ -127,7 +157,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                 }
                 
                 context("that downloads file") {
-                    fit("should provide temporary url to the file") {
+                    it("should provide temporary url to the file") {
                         var file: URL?
                         self.service.request(self.makeCall(for: FileRequest.self, response: FileResponse.self) {
                             file = $0?.file
@@ -135,6 +165,35 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                         })
                         
                         expect(file).toNotEventually(beNil(), timeout: criticalTimeout)
+                    }
+                }
+                
+                context("and configured retry") {
+                    let retries: UInt = 4
+                    beforeEach {
+                        self.service.retriesCount = 0
+                    }
+                    it("should try \(retries) times request") {
+                        let call = self.makeCall(for: FailingRequest.self, retries: retries) {}
+                        var called = false
+                        self.service.request(call) { _ in
+                            called = true
+                        }
+                        
+                        expect(called).toEventually(beTrue(), timeout: criticalTimeout)
+                        expect(self.service.retriesCount).toEventually(equal(retries), timeout: criticalTimeout)
+                    }
+                    
+                    it("should not retry request with inappropriate method (POST)") {
+                        self.configuration.retriableMethods = [.get]
+                        let call = self.makeCall(for: NotRetriableMethodFailingRequest.self, retries: retries) {}
+                        var called = false
+                        self.service.request(call) { _ in
+                            called = true
+                        }
+                        
+                        expect(called).toEventually(beTrue(), timeout: criticalTimeout)
+                        expect(self.service.retriesCount).toEventually(equal(0), timeout: criticalTimeout)
                     }
                 }
             }
@@ -222,6 +281,9 @@ class AlamofireNetworkServiceSpec: QuickSpec {
 }
 
 private protocol AnyMockedRequestable: AnyRequestable {
+    
+    var retryAttempts: UInt? { get set }
+    
     init()
 }
 
@@ -230,6 +292,17 @@ private struct SuccessRequest: AnyMockedRequestable {
     let method = RequestMethod.get
     
     let path: String = ""
+    
+    var retryAttempts: UInt? = nil
+}
+
+private struct NotRetriableMethodFailingRequest: AnyMockedRequestable {
+    
+    let method = RequestMethod.post
+    
+    let path: String = "not_existed"
+    
+    var retryAttempts: UInt? = nil
 }
 
 private struct FailingRequest: AnyMockedRequestable {
@@ -237,6 +310,8 @@ private struct FailingRequest: AnyMockedRequestable {
     let method = RequestMethod.get
     
     let path: String = "not_existed"
+    
+    var retryAttempts: UInt? = nil
 }
 
 private struct FileRequest: AnyMockedRequestable, AnyFileRequestable {
@@ -244,6 +319,8 @@ private struct FileRequest: AnyMockedRequestable, AnyFileRequestable {
     let method = RequestMethod.get
     
     let path = "https://raw.githubusercontent.com/adya/TSKit.Networking.Alamofire/master/Cartfile"
+    
+    var retryAttempts: UInt? = nil
 }
 
 private struct FailingResponse: AnyResponse {
@@ -286,9 +363,8 @@ private struct FileResponse: AnyFileResponse {
     
 }
 
-private struct ForegroundConfiguration: AnyNetworkServiceConfiguration {
+private class ForegroundConfiguration: AnyNetworkServiceConfiguration {
    
-    
     var sessionTemporaryFilesDirectory: URL? { nil }
     
     let host = "https://google.com"
@@ -298,4 +374,6 @@ private struct ForegroundConfiguration: AnyNetworkServiceConfiguration {
         configuration.timeoutIntervalForRequest = 5
         return configuration
     }()
+    
+    var retriableMethods: Set<RequestMethod> = [.get, .head, .delete, .options, .put, .trace]
 }

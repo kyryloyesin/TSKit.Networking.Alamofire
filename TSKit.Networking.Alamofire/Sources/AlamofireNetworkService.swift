@@ -62,7 +62,7 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
             
             return isAllowed
         }
-        retiableCalls += calls.filter { $0.request.retryAttempts?.nonZero != nil }
+        registerForRetries(calls)
         var capturedResult: EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
@@ -153,6 +153,14 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
     
     private var retiableCalls: [AlamofireRequestCall] = []
     
+    private func registerForRetries(_ calls: [AlamofireRequestCall]) {
+        let configuration = self.configuration
+        retiableCalls += calls.filter {
+            configuration.retriableMethods.contains($0.request.method) &&
+            ($0.request.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero) != nil
+        }
+    }
+    
     public func should(_ manager: SessionManager,
                        retry request: Request,
                        with error: Error,
@@ -161,15 +169,26 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
             return completion(false, 0)
         }
         
-        guard let maxRetries = requestCall.retryAttempts else { return completion(false, 0) }
-        
-        let isRetriableError = (error as? URLError).flatMap { requestCall.retriableFailures?.contains($0.code) } ?? true
-        let canRetryMore = request.retryCount <= maxRetries
-        let isRetriableStatus = request.response.flatMap { requestCall.retriableStatuses?.contains($0.statusCode) } ?? true
-        
-        let shouldRetry = (isRetriableStatus || isRetriableError) && canRetryMore
-        if !shouldRetry {
+        func removeCall() {
             retiableCalls.removeFirst(where: { $0.token?.request == request.request })
+        }
+        
+        let configuration = self.configuration
+        
+        guard let maxRetries = requestCall.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero else {
+            removeCall()
+            return completion(false, 0)
+        }
+        let retriableFailures = requestCall.retriableFailures ?? configuration.retriableFailures
+        let retriableStatuses = requestCall.retriableStatuses ?? configuration.retriableStatuses
+        
+        let canRetryMore = request.retryCount < maxRetries
+        let isRetriableError = { (error as? URLError).flatMap { retriableFailures?.contains($0.code) } ?? true }
+        let isRetriableStatus = { request.response.flatMap { retriableStatuses?.contains($0.statusCode) } ?? true }
+        
+        let shouldRetry = canRetryMore && (isRetriableStatus() || isRetriableError())
+        if !shouldRetry {
+            removeCall()
         }
         completion(shouldRetry, 1)
     }

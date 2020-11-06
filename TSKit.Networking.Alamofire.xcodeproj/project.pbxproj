@@ -41,6 +41,8 @@
 		0087D30A2541E0E6000D6BFD /* TSKit_Log.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 007DF0E62350F23A005F51F1 /* TSKit_Log.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		0087D30B2541E0F8000D6BFD /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0050EFA9217526CB0080D150 /* Alamofire.framework */; };
 		0087D30C2541E0F8000D6BFD /* Alamofire.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0050EFA9217526CB0080D150 /* Alamofire.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		00B3925725555F38000E5338 /* TSKit_Log.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00B3925625555F38000E5338 /* TSKit_Log.framework */; };
+		00B3925A25555F59000E5338 /* TSKit_Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 00B3925925555F59000E5338 /* TSKit_Core.framework */; };
 		00BC01CA21502DC90009290B /* Cartfile in Resources */ = {isa = PBXBuildFile; fileRef = 00BC01C921502DC90009290B /* Cartfile */; };
 		00BC01CF21502E020009290B /* AlamofireRequestCallBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */; };
 		00BC01D021502E020009290B /* AlamofireRequestCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00BC01CE21502E020009290B /* AlamofireRequestCall.swift */; };
@@ -132,6 +134,8 @@
 		0087D2ED2541DFF0000D6BFD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0087D2F02541DFF0000D6BFD /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		0087D2F22541DFF0000D6BFD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		00B3925625555F38000E5338 /* TSKit_Log.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Log.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		00B3925925555F59000E5338 /* TSKit_Core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = TSKit_Core.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		00BC01C921502DC90009290B /* Cartfile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = Cartfile; sourceTree = SOURCE_ROOT; };
 		00BC01CD21502E020009290B /* AlamofireRequestCallBuilder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCallBuilder.swift; sourceTree = "<group>"; };
 		00BC01CE21502E020009290B /* AlamofireRequestCall.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireRequestCall.swift; sourceTree = "<group>"; };
@@ -149,6 +153,8 @@
 				0050EF9E217525100080D150 /* Nimble.framework in Frameworks */,
 				0050EF9F217525100080D150 /* Quick.framework in Frameworks */,
 				0050EF97217524B60080D150 /* TSKit_Networking_Alamofire.framework in Frameworks */,
+				00B3925725555F38000E5338 /* TSKit_Log.framework in Frameworks */,
+				00B3925A25555F59000E5338 /* TSKit_Core.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -225,6 +231,8 @@
 		0057DDC32013A7BC002B8429 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				00B3925925555F59000E5338 /* TSKit_Core.framework */,
+				00B3925625555F38000E5338 /* TSKit_Log.framework */,
 				007C258124A4AD0400A9AC5C /* TSKit_Core.framework */,
 				007DF1362350FFE8005F51F1 /* TSKit_Core.framework */,
 				007DF1372350FFE8005F51F1 /* TSKit_Injection.framework */,
