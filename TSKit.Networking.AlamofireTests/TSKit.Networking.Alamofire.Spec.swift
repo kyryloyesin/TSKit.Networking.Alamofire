@@ -12,11 +12,7 @@ import Alamofire
 
 class InspectableService: AlamofireNetworkService {
     
-    var retriesCount: UInt = 0 {
-        didSet {
-            print("I'M \(retriesCount)")
-        }
-    }
+    var retriesCount: UInt = 0
     
     override func should(_ manager: SessionManager, retry request: Request, with error: Error, completion: @escaping RequestRetryCompletion) {
         super.should(manager, retry: request, with: error, completion: {

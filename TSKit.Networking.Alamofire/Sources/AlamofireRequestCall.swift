@@ -11,10 +11,24 @@ import Alamofire
 /// `Response` object.
 class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebugStringConvertible {
 
+    static func identifier(from request: Alamofire.Request) -> Int? {
+        request.task?.taskIdentifier
+    }
+    
+    
     /// `Request` to be called.
     public let request: AnyRequestable
 
-    var token: Alamofire.Request?
+    /// Identifier that uniquely identifies given call after it's been started.
+    private(set) var identifier: Int?
+    
+    var token: Alamofire.Request? {
+        didSet {
+            if let id = token.flatMap(AlamofireRequestCall.identifier(from:)) {
+                identifier = id
+            }
+        }
+    }
 
     let queue: DispatchQueue
 

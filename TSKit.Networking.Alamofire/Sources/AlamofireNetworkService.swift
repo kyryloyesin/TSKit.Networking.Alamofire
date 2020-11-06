@@ -161,6 +161,10 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         }
     }
     
+    private func unregisterRetriableCall(_ call: AlamofireRequestCall) {
+        retiableCalls.removeFirst(where: { $0.identifier == call.identifier })
+    }
+
     public func should(_ manager: SessionManager,
                        retry request: Request,
                        with error: Error,
@@ -169,14 +173,9 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
             return completion(false, 0)
         }
         
-        func removeCall() {
-            retiableCalls.removeFirst(where: { $0.token?.request == request.request })
-        }
-        
         let configuration = self.configuration
         
         guard let maxRetries = requestCall.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero else {
-            removeCall()
             return completion(false, 0)
         }
         let retriableFailures = requestCall.retriableFailures ?? configuration.retriableFailures
@@ -191,7 +190,6 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
             log?.verbose(tag: self)("Retrying request \(requestCall). Attempt #\(request.retryCount + 1). Retrying after statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
         } else {
             log?.verbose(tag: self)("No more retries for request \(requestCall). Failing with statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
-            removeCall()
         }
         completion(shouldRetry, 1)
     }
@@ -611,6 +609,7 @@ private extension AlamofireNetworkService {
                                 rawData: Data?,
                                 kind: ResponseKind,
                                 call: AlamofireRequestCall) -> EmptyResponse {
+        defer { unregisterRetriableCall(call) }
         guard call.token != nil else {
             log?.verbose(tag: self)("Request has been cancelled and will be ignored")
             return .success(())
