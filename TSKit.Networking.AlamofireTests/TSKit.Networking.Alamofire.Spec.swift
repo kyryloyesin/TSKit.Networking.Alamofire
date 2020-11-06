@@ -169,7 +169,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                     beforeEach {
                         self.service.retriesCount = 0
                     }
-                    fit("should try \(retries) times request") {
+                    it("should try \(retries) times request") {
                         let call = self.makeCall(for: FailingRequest.self, retries: retries) {}
                         var called = false
                         self.service.request(call) { _ in
@@ -180,7 +180,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                         expect(self.service.retriesCount).toEventually(equal(retries), timeout: criticalTimeout)
                     }
                     
-                    fit("should not retry request with inappropriate method (POST)") {
+                    it("should not retry request with inappropriate method (POST)") {
                         self.configuration.retriableMethods = [.get]
                         let call = self.makeCall(for: NotRetriableMethodFailingRequest.self, retries: retries) {}
                         var called = false
