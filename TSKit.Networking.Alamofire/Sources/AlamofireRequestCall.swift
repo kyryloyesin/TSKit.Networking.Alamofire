@@ -10,22 +10,16 @@ import Alamofire
 /// RequestCall represents a single request call with configured `Request` object and defined type of expected
 /// `Response` object.
 class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebugStringConvertible {
-
-    static func identifier(from request: Alamofire.Request) -> Int? {
-        request.task?.taskIdentifier
-    }
-    
     
     /// `Request` to be called.
     public let request: AnyRequestable
 
-    /// Identifier that uniquely identifies given call after it's been started.
-    private(set) var identifier: Int?
+    private(set) var originalRequest: URLRequest?
     
     var token: Alamofire.Request? {
         didSet {
-            if let id = token.flatMap(AlamofireRequestCall.identifier(from:)) {
-                identifier = id
+            if let request = token?.task?.originalRequest {
+                originalRequest = request
             }
         }
     }

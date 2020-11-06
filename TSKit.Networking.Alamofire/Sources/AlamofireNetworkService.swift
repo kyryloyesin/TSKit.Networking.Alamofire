@@ -153,23 +153,34 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
     
     private var retiableCalls: [AlamofireRequestCall] = []
     
+    private let syncQueue = DispatchQueue(label: "RetriableCallsSynchronizedQueue", attributes: .concurrent)
+    
+    private func retriableCall(for request: Alamofire.Request) -> AlamofireRequestCall? {
+        syncQueue.sync { retiableCalls.first(where: { $0.originalRequest == request.task?.originalRequest }) }
+    }
+    
     private func registerForRetries(_ calls: [AlamofireRequestCall]) {
         let configuration = self.configuration
-        retiableCalls += calls.filter {
+        let newRetriableCalls = calls.filter {
             configuration.retriableMethods.contains($0.request.method) &&
             ($0.request.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero) != nil
+        }
+        syncQueue.async(flags: .barrier) {
+            self.retiableCalls += newRetriableCalls
         }
     }
     
     private func unregisterRetriableCall(_ call: AlamofireRequestCall) {
-        retiableCalls.removeFirst(where: { $0.identifier == call.identifier })
+        syncQueue.async(flags: .barrier) {
+            self.retiableCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
+        }
     }
 
     public func should(_ manager: SessionManager,
                        retry request: Request,
                        with error: Error,
                        completion: @escaping RequestRetryCompletion) {
-        guard let requestCall = retiableCalls.first(where: { $0.token?.request == request.request })?.request else {
+        guard let requestCall = retriableCall(for: request)?.request else {
             return completion(false, 0)
         }
         
