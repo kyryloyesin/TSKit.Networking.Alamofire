@@ -19,7 +19,6 @@
 		0057DDBD2013A737002B8429 /* TSKit_Networking_Alamofire.h in Headers */ = {isa = PBXBuildFile; fileRef = 0057DDBB2013A737002B8429 /* TSKit_Networking_Alamofire.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0057DDCA2013A93E002B8429 /* AlamofireNetworkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */; };
 		007C258224A4AD0400A9AC5C /* TSKit_Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007C258124A4AD0400A9AC5C /* TSKit_Core.framework */; };
-		007C258424A4AD0400A9AC5C /* TSKit_Injection.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */; };
 		007C258624A4AD0400A9AC5C /* TSKit_Log.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007DF0E62350F23A005F51F1 /* TSKit_Log.framework */; };
 		007C258824A4AD0400A9AC5C /* TSKit_Networking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */; };
 		007DF1302350FF4D005F51F1 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0050EFA9217526CB0080D150 /* Alamofire.framework */; };
@@ -33,8 +32,6 @@
 		0087D2FE2541E0A0000D6BFD /* TSKit_Networking_Alamofire.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDB82013A737002B8429 /* TSKit_Networking_Alamofire.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		0087D3012541E0A0000D6BFD /* TSKit_Networking.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */; };
 		0087D3022541E0A0000D6BFD /* TSKit_Networking.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		0087D3052541E0D9000D6BFD /* TSKit_Injection.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */; };
-		0087D3062541E0D9000D6BFD /* TSKit_Injection.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		0087D3072541E0E6000D6BFD /* TSKit_Core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007C258124A4AD0400A9AC5C /* TSKit_Core.framework */; };
 		0087D3082541E0E6000D6BFD /* TSKit_Core.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 007C258124A4AD0400A9AC5C /* TSKit_Core.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		0087D3092541E0E6000D6BFD /* TSKit_Log.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 007DF0E62350F23A005F51F1 /* TSKit_Log.framework */; };
@@ -99,7 +96,6 @@
 				0087D30C2541E0F8000D6BFD /* Alamofire.framework in Embed Frameworks */,
 				0087D3022541E0A0000D6BFD /* TSKit_Networking.framework in Embed Frameworks */,
 				0087D2FE2541E0A0000D6BFD /* TSKit_Networking_Alamofire.framework in Embed Frameworks */,
-				0087D3062541E0D9000D6BFD /* TSKit_Injection.framework in Embed Frameworks */,
 				0087D3082541E0E6000D6BFD /* TSKit_Core.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
@@ -120,12 +116,10 @@
 		0057DDBC2013A737002B8429 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Networking.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0057DDC82013A93E002B8429 /* AlamofireNetworkService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AlamofireNetworkService.swift; sourceTree = "<group>"; };
-		007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Injection.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		007C258124A4AD0400A9AC5C /* TSKit_Core.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Core.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		007DF0E62350F23A005F51F1 /* TSKit_Log.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = TSKit_Log.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		007DF1352350FFE8005F51F1 /* TSKit_Log.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = TSKit_Log.framework; path = Carthage/Build/iOS/TSKit_Log.framework; sourceTree = "<group>"; };
 		007DF1362350FFE8005F51F1 /* TSKit_Core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = TSKit_Core.framework; path = Carthage/Build/iOS/TSKit_Core.framework; sourceTree = "<group>"; };
-		007DF1372350FFE8005F51F1 /* TSKit_Injection.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = TSKit_Injection.framework; path = Carthage/Build/iOS/TSKit_Injection.framework; sourceTree = "<group>"; };
 		0087D2E22541DFEE000D6BFD /* TestingHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestingHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0087D2E42541DFEE000D6BFD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		0087D2E62541DFEE000D6BFD /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -165,7 +159,6 @@
 				007C258824A4AD0400A9AC5C /* TSKit_Networking.framework in Frameworks */,
 				007DF1302350FF4D005F51F1 /* Alamofire.framework in Frameworks */,
 				007C258224A4AD0400A9AC5C /* TSKit_Core.framework in Frameworks */,
-				007C258424A4AD0400A9AC5C /* TSKit_Injection.framework in Frameworks */,
 				007C258624A4AD0400A9AC5C /* TSKit_Log.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -178,7 +171,6 @@
 				0087D30B2541E0F8000D6BFD /* Alamofire.framework in Frameworks */,
 				0087D3012541E0A0000D6BFD /* TSKit_Networking.framework in Frameworks */,
 				0087D2FD2541E0A0000D6BFD /* TSKit_Networking_Alamofire.framework in Frameworks */,
-				0087D3052541E0D9000D6BFD /* TSKit_Injection.framework in Frameworks */,
 				0087D3072541E0E6000D6BFD /* TSKit_Core.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -235,14 +227,12 @@
 				00B3925625555F38000E5338 /* TSKit_Log.framework */,
 				007C258124A4AD0400A9AC5C /* TSKit_Core.framework */,
 				007DF1362350FFE8005F51F1 /* TSKit_Core.framework */,
-				007DF1372350FFE8005F51F1 /* TSKit_Injection.framework */,
 				007DF1352350FFE8005F51F1 /* TSKit_Log.framework */,
 				00C4D6E722C8D2C300480DBC /* OHHTTPStubs.framework */,
 				0050EFA9217526CB0080D150 /* Alamofire.framework */,
 				0050EF8A217516A70080D150 /* Nimble.framework */,
 				0050EF8B217516A70080D150 /* Quick.framework */,
 				007DF0E62350F23A005F51F1 /* TSKit_Log.framework */,
-				007AFF0A216BE88C00C96933 /* TSKit_Injection.framework */,
 				0057DDC52013A7BC002B8429 /* TSKit_Networking.framework */,
 			);
 			name = Frameworks;

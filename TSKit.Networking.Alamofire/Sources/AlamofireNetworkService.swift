@@ -5,13 +5,10 @@
 
 import Alamofire
 import TSKit_Networking
-import TSKit_Injection
 import TSKit_Core
 import TSKit_Log
 
 public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, RequestRetrier {
-
-    private let log = try? Injector.inject(AnyLogger.self, for: AnyNetworkService.self)
 
     public var backgroundSessionCompletionHandler: (() -> Void)? {
         get {
@@ -28,6 +25,8 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
 
     private let configuration: AnyNetworkServiceConfiguration
 
+    private var log: AnyLogger?
+    
     /// Flag determining what type of session tasks should be used.
     /// When working in background all requests are handled by `URLSessionDownloadTask`s,
     /// otherwise `URLSessionDataTask` will be used.
@@ -45,6 +44,13 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         self.configuration = configuration
         manager.adapter = self
         manager.retrier = self
+        log = nil
+    }
+    
+    public convenience init(configuration: AnyNetworkServiceConfiguration,
+                            log: AnyLogger?) {
+        self.init(configuration: configuration)
+        self.log = log
     }
 
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {

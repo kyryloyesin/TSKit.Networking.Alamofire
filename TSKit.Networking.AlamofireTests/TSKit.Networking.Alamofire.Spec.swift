@@ -3,7 +3,6 @@ import Quick
 import Nimble
 import TSKit_Networking
 import TSKit_Core
-import TSKit_Injection
 import TSKit_Log
 
 import Alamofire
@@ -74,13 +73,11 @@ class AlamofireNetworkServiceSpec: QuickSpec {
         let criticalTimeout = DispatchTimeInterval.seconds(10)
         describe("Foreground alamofire network service") {
             beforeEach {
-                Injector.configure(with: [ InjectionRule(injectable: AnyLogger.self, once: true) {
-                    let logger = Logger()
-                    logger.writers = [PrintLogEntryWriter()]
-                    return logger
-                }])
                 self.configuration = .init()
-                self.service = .init(configuration: self.configuration)
+                self.service = .init(configuration: self.configuration,
+                                     log: transform(Logger()) {
+                                        $0.writers = [PrintLogEntryWriter()]
+                                     })
             }
         
             describe("when processing single request") {
