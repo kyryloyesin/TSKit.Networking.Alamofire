@@ -3,6 +3,7 @@
 // - Copyright: © 2020. Arkadii Hlushchevskyi.
 // - Seealso: https://github.com/adya/TSKit.Networking.Alamofire/blob/master/LICENSE.md
 
+import Foundation
 import Alamofire
 import TSKit_Networking
 import TSKit_Core
