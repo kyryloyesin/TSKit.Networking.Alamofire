@@ -272,12 +272,18 @@ private extension AlamofireNetworkService {
                                     call.token = request
                                     
                                 case .failure(let error):
-                                wrapper.error = .init(request: request,
-                                                      response: nil,
-                                                      error: error,
-                                                      sessionError: error.asAFError?.underlyingError,
-                                                      reason: .encodingFailure,
-                                                      body: nil)
+                                    call.errorHandler?.handle(request: call.request,
+                                                              response: nil,
+                                                              error: error,
+                                                              sessionError: error.asAFError?.underlyingError,
+                                                              reason: .encodingFailure,
+                                                              body: nil)
+                                    wrapper.error = .init(request: request,
+                                                          response: nil,
+                                                          error: error,
+                                                          sessionError: error.asAFError?.underlyingError,
+                                                          reason: .encodingFailure,
+                                                          body: nil)
                                }
                            })
             return wrapper
