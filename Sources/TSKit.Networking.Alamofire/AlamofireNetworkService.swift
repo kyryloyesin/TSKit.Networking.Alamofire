@@ -21,6 +21,8 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
     }
     
     public var interceptors: [AnyNetworkServiceInterceptor]?
+    
+    public var recoverers: [AnyNetworkServiceRecoverer]?
 
     private let manager: Alamofire.SessionManager
 
@@ -167,13 +169,8 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
     }
     
     private func registerForRetries(_ calls: [AlamofireRequestCall]) {
-        let configuration = self.configuration
-        let newRetriableCalls = calls.filter {
-            configuration.retriableMethods.contains($0.request.method) &&
-            ($0.request.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero) != nil
-        }
         syncQueue.async(flags: .barrier) {
-            self.retiableCalls += newRetriableCalls
+            self.retiableCalls += calls
         }
     }
     
@@ -187,29 +184,23 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
                        retry request: Request,
                        with error: Error,
                        completion: @escaping RequestRetryCompletion) {
-        guard let requestCall = retriableCall(for: request)?.request else {
+        guard let requestCall = retriableCall(for: request) else {
             return completion(false, 0)
         }
         
-        let configuration = self.configuration
-        
-        guard let maxRetries = requestCall.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero else {
+        guard let recoverer = recoverers?.first(where: {$0.canRecover(call: requestCall, response: request.response, error: error as? URLError, in: self) }) else {
             return completion(false, 0)
         }
-        let retriableFailures = requestCall.retriableFailures ?? configuration.retriableFailures
-        let retriableStatuses = requestCall.retriableStatuses ?? configuration.retriableStatuses
         
-        let canRetryMore = request.retryCount < maxRetries
-        let isRetriableError = { (error as? URLError).flatMap { retriableFailures?.contains($0.code) } ?? true }
-        let isRetriableStatus = { request.response.flatMap { retriableStatuses?.contains($0.statusCode) } ?? true }
-        
-        let shouldRetry = canRetryMore && (isRetriableStatus() || isRetriableError())
-        if shouldRetry {
-            log?.verbose(tag: self)("Retrying request \(requestCall). Attempt #\(request.retryCount + 1). Retrying after statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
-        } else {
-            log?.verbose(tag: self)("No more retries for request \(requestCall). Failing with statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
+        recoverer.recover(call: requestCall, response: request.response, error: error as? URLError, in: self) { [weak self] isRecovered in
+            if isRecovered {
+                requestCall.recoveryAttempts += 1
+                self?.log?.verbose(tag: self)("Retrying request \(requestCall.request). Attempt #\(requestCall.recoveryAttempts). Retrying after response: \(String(describing: request.response)); error: \(error)")
+            } else {
+                self?.log?.verbose(tag: self)("No more retries for request \(requestCall.request). Failing with response: \(String(describing: request.response)); error: \(error)")
+            }
+            completion(isRecovered, isRecovered ? 1 : 0)
         }
-        completion(shouldRetry, 1)
     }
 }
 

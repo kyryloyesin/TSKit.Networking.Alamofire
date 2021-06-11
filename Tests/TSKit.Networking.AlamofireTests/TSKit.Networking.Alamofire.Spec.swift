@@ -1,11 +1,12 @@
 import Foundation
 import Quick
 import Nimble
-import TSKit_Networking
 import TSKit_Core
 import TSKit_Log
 
 import Alamofire
+
+@testable import TSKit_Networking
 @testable import TSKit_Networking_Alamofire
 
 
@@ -24,6 +25,16 @@ class InspectableService: AlamofireNetworkService {
     }
 }
 
+class MockRecoverer: DeferredRetryRecoverer {
+    
+    var recoveryCount: UInt = 0
+    
+    override func recover(_ completion: @escaping RecoveryCompletion) {
+        recoveryCount += 1
+        completion(true)
+    }
+}
+
 class AlamofireNetworkServiceSpec: QuickSpec {
     
     private func makeCall<ResponseType: AnyResponse>(for request: AnyMockedRequestable.Type,
@@ -31,7 +42,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                                                      response: ResponseType.Type,
                                                      handler: @escaping (_ response: ResponseType?) -> Void) -> AnyRequestCall {
         service.builder(for: transform(request.init()) {
-            $0.retryAttempts = retries
+            $0.maximumRecoveryAttempts = retries
         })
         .dispatch(to: .global())
         .response(response) {
@@ -53,7 +64,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
     
     private func makeStatusCall<T>(for request: T.Type, retries: UInt? = nil, result: @escaping (Bool, Int?) -> Void) -> AnyRequestCall where T: AnyMockedRequestable {
         service.builder(for: transform(request.init()) {
-            $0.retryAttempts = retries
+            $0.maximumRecoveryAttempts = retries
         })
         .dispatch(to: .global())
         .response(SuccessResponse.self, forStatuses: 200) {
@@ -67,6 +78,10 @@ class AlamofireNetworkServiceSpec: QuickSpec {
     
     private var service: InspectableService!
     
+    private var retryRecovery: RetryRecoverer!
+    
+    private var recoverRecovery: MockRecoverer!
+    
     private var configuration: ForegroundConfiguration!
     
     override func spec() {
@@ -78,6 +93,8 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                                      log: transform(Logger()) {
                                         $0.writers = [PrintLogEntryWriter()]
                                      })
+                self.retryRecovery = RetryRecoverer()
+                self.recoverRecovery = MockRecoverer()
             }
         
             describe("when processing single request") {
@@ -164,6 +181,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                 context("and configured retry") {
                     let retries: UInt = 4
                     beforeEach {
+                        self.service.recoverers = [self.retryRecovery]
                         self.service.retriesCount = 0
                     }
                     it("should try \(retries) times request") {
@@ -178,7 +196,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                     }
                     
                     it("should not retry request with inappropriate method (POST)") {
-                        self.configuration.retriableMethods = [.get]
+                        self.retryRecovery.retriableMethods = [.get]
                         let call = self.makeCall(for: NotRetriableMethodFailingRequest.self, retries: retries) {}
                         var called = false
                         self.service.request(call) { _ in
@@ -187,6 +205,21 @@ class AlamofireNetworkServiceSpec: QuickSpec {
                         
                         expect(called).toEventually(beTrue(), timeout: criticalTimeout)
                         expect(self.service.retriesCount).toEventually(equal(0), timeout: criticalTimeout)
+                    }
+                }
+                
+                context("and configured recovery") {
+                    beforeEach {
+                        self.service.recoverers = [self.recoverRecovery]
+                        self.recoverRecovery.recoveryCount = 0
+                        self.recoverRecovery.retriableStatuses = [404]
+                    }
+
+                    it("should recover") {
+                        let call = self.makeCall(for: FailingRequest.self) {}
+                        self.service.request(call)
+
+                        expect(self.recoverRecovery.recoveryCount).toEventually(beGreaterThan(0), timeout: criticalTimeout)
                     }
                 }
             }
@@ -275,7 +308,7 @@ class AlamofireNetworkServiceSpec: QuickSpec {
 
 private protocol AnyMockedRequestable: AnyRequestable {
     
-    var retryAttempts: UInt? { get set }
+    var maximumRecoveryAttempts: UInt? { get set }
     
     init()
 }
@@ -286,7 +319,7 @@ private struct SuccessRequest: AnyMockedRequestable {
     
     let path: String = ""
     
-    var retryAttempts: UInt? = nil
+    var maximumRecoveryAttempts: UInt? = nil
 }
 
 private struct NotRetriableMethodFailingRequest: AnyMockedRequestable {
@@ -295,7 +328,7 @@ private struct NotRetriableMethodFailingRequest: AnyMockedRequestable {
     
     let path: String = "not_existed"
     
-    var retryAttempts: UInt? = nil
+    var maximumRecoveryAttempts: UInt? = nil
 }
 
 private struct FailingRequest: AnyMockedRequestable {
@@ -304,7 +337,7 @@ private struct FailingRequest: AnyMockedRequestable {
     
     let path: String = "not_existed"
     
-    var retryAttempts: UInt? = nil
+    var maximumRecoveryAttempts: UInt? = nil
 }
 
 private struct FileRequest: AnyMockedRequestable, AnyFileRequestable {
@@ -313,7 +346,7 @@ private struct FileRequest: AnyMockedRequestable, AnyFileRequestable {
     
     let path = "https://raw.githubusercontent.com/adya/TSKit.Networking.Alamofire/master/Cartfile"
     
-    var retryAttempts: UInt? = nil
+    var maximumRecoveryAttempts: UInt? = nil
 }
 
 private struct FailingResponse: AnyResponse {
@@ -367,6 +400,4 @@ private class ForegroundConfiguration: AnyNetworkServiceConfiguration {
         configuration.timeoutIntervalForRequest = 5
         return configuration
     }()
-    
-    var retriableMethods: Set<RequestMethod> = [.get, .head, .delete, .options, .put, .trace]
 }

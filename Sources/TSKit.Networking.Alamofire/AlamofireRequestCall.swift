@@ -13,6 +13,10 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
     
     /// `Request` to be called.
     public let request: AnyRequestable
+    
+    public internal(set) var recoveryAttempts: Int = 0
+    
+    public let validStatuses: Set<Int>
 
     private(set) var originalRequest: URLRequest?
     
@@ -31,7 +35,7 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
     var errorHandler: ErrorHandler?
 
     let progress: [ProgressClosure]
-
+            
     /// - Parameter request: Configured Request object.
     /// - Parameter responseType: Type of expected Response object.
     /// - Parameter completion: Closure to be called upon receiving response.
@@ -45,6 +49,7 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
         self.handlers = handlers
         self.errorHandler = errorHandler
         self.progress = progressClosures
+        self.validStatuses = handlers.reduce(into: []) { $0.formUnion($1.statuses) }
     }
 
     public func cancel() {
