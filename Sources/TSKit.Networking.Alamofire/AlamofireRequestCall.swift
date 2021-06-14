@@ -16,7 +16,7 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
     
     public internal(set) var recoveryAttempts: Int = 0
     
-    public let validStatuses: Set<Int>
+    public let validStatusCodes: Set<HTTPStatusCode>
 
     private(set) var originalRequest: URLRequest?
     
@@ -49,7 +49,7 @@ class AlamofireRequestCall: AnyRequestCall, CustomStringConvertible, CustomDebug
         self.handlers = handlers
         self.errorHandler = errorHandler
         self.progress = progressClosures
-        self.validStatuses = handlers.reduce(into: []) { $0.formUnion($1.statuses) }
+        self.validStatusCodes = handlers.reduce(into: []) { $0.formUnion($1.statuses) }
     }
 
     public func cancel() {
