@@ -70,7 +70,7 @@ public class AlamofireNetworkService: AnyNetworkService {
             
             return isAllowed
         }
-        registerForRetries(calls)
+        addActiveCalls(calls)
         var capturedResult: EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
@@ -153,25 +153,46 @@ public class AlamofireNetworkService: AnyNetworkService {
         return supportedCall
     }
     
-    private var retiableCalls: [AlamofireRequestCall] = []
+    /// Calls that are being processed currently.
+    private var activeCalls: [AlamofireRequestCall] = []
     
-    private let syncQueue = DispatchQueue(label: "RetriableCallsSynchronizedQueue", attributes: .concurrent)
+    /// Calls that are pending recovery.
+    private var recoveringCalls: [AlamofireRequestCall] = []
     
-    private func retriableCall(for request: Alamofire.Request) -> AlamofireRequestCall? {
-        syncQueue.sync { retiableCalls.first(where: { $0.originalRequest == request.task?.originalRequest }) }
+    private let syncQueue = DispatchQueue(label: "ActiveCallsSynchronizedQueue", attributes: .concurrent)
+    
+    /// Finds an active `AlamofireRequestCall` that corresponds to given `request`.
+    private func activeCall(for request: Alamofire.Request) -> AlamofireRequestCall? {
+        syncQueue.sync { activeCalls.first(where: { $0.originalRequest == request.task?.originalRequest }) }
     }
     
-    private func registerForRetries(_ calls: [AlamofireRequestCall]) {
-        log?.debug(tag: self)("Registering for retrying")
+    private func addActiveCalls(_ calls: [AlamofireRequestCall]) {
         syncQueue.async(flags: .barrier) {
-            self.retiableCalls += calls
+            self.activeCalls += calls
         }
     }
     
-    private func unregisterRetriableCall(_ call: AlamofireRequestCall) {
+    private func removeActiveCall(_ call: AlamofireRequestCall) {
         syncQueue.async(flags: .barrier) {
-            self.retiableCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
+            self.activeCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
         }
+    }
+    
+    private func addRecoveringCall(_ call: AlamofireRequestCall) {
+        syncQueue.async(flags: .barrier) {
+            self.recoveringCalls.append(call)
+        }
+    }
+    
+    private func removeRecoveringCall(_ call: AlamofireRequestCall) {
+        syncQueue.async(flags: .barrier) {
+            self.recoveringCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
+        }
+    }
+    
+    /// Finds a `AlamofireRequestCall` that is pending recovery that corresponds to given `request`.
+    private func recoveringCall(for request: URLRequest) -> AlamofireRequestCall? {
+        syncQueue.sync { activeCalls.first(where: { $0.originalRequest == request }) }
     }
 }
 
@@ -595,7 +616,7 @@ private extension AlamofireNetworkService {
                                 rawData: Data?,
                                 kind: ResponseKind,
                                 call: AlamofireRequestCall) -> EmptyResponse {
-        defer { unregisterRetriableCall(call) }
+        defer { removeActiveCall(call) }
         guard call.token != nil else {
             log?.verbose(tag: self)("Request has been cancelled and will be ignored")
             return .success(())
@@ -769,14 +790,17 @@ extension AlamofireNetworkService: RequestRetrier {
                        retry request: Request,
                        with error: Error,
                        completion: @escaping RequestRetryCompletion) {
-        guard let requestCall = retriableCall(for: request) else {
+        guard let requestCall = activeCall(for: request) else {
             return completion(false, 0)
         }
         
-        guard let recoverer = recoverers.first(where: {$0.canRecover(call: requestCall, response: request.response, error: error as? URLError, in: self) }) else {
+        guard let recoverer = recoverers.first(where: { $0.canRecover(call: requestCall, response: request.response, error: error as? URLError, in: self) }) else {
             return completion(false, 0)
         }
         
+        addRecoveringCall(requestCall)
+        
+        log?.verbose(tag: self)("Recovering request \(requestCall.request)")
         recoverer.recover(call: requestCall, response: request.response, error: error as? URLError, in: self) { [weak self] isRecovered in
             if isRecovered {
                 requestCall.recoveryAttempts += 1
@@ -784,16 +808,30 @@ extension AlamofireNetworkService: RequestRetrier {
             } else {
                 self?.log?.verbose(tag: self)("No more retries for request \(requestCall.request). Failing with response: \(String(describing: request.response)); error: \(error)")
             }
+            self?.removeRecoveringCall(requestCall)
             completion(isRecovered, isRecovered ? 1 : 0)
         }
     }
 }
 
+// MARK: - RequestAdapter
 extension AlamofireNetworkService: RequestAdapter {
     
     public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
         transform(urlRequest) {
             $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
+            
+            // Re-apply headers in case those changed after recovery.
+            // Only do so if the call is recovering, otherwise request has been already configured.
+            if let call = recoveringCall(for: urlRequest) {
+                log?.verbose(tag: self)("Updating headers for recovered request \(call.request)")
+                let headers = constructHeaders(withRequest: call.request)
+                for (headerField, headerValue) in headers {
+                    $0.setValue(headerValue, forHTTPHeaderField: headerField)
+                }
+               
+                // TODO: Add parameters invalidation as well, perhaps?
+            }
         }
     }
 }
