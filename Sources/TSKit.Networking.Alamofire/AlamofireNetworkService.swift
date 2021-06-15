@@ -1,6 +1,6 @@
 // - Since: 01/20/2018
 // - Author: Arkadii Hlushchevskyi
-// - Copyright: © 2020. Arkadii Hlushchevskyi.
+// - Copyright: © 2021. Arkadii Hlushchevskyi.
 // - Seealso: https://github.com/adya/TSKit.Networking.Alamofire/blob/master/LICENSE.md
 
 import Foundation
@@ -9,7 +9,7 @@ import TSKit_Networking
 import TSKit_Core
 import TSKit_Log
 
-public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, RequestRetrier {
+public class AlamofireNetworkService: AnyNetworkService {
 
     public var backgroundSessionCompletionHandler: (() -> Void)? {
         get {
@@ -20,7 +20,9 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         }
     }
     
-    public var interceptors: [AnyNetworkServiceInterceptor]?
+    public var interceptors: [AnyNetworkServiceInterceptor]
+    
+    public var recoverers: [AnyNetworkServiceRecoverer]
 
     private let manager: Alamofire.SessionManager
 
@@ -39,21 +41,20 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         return configuration.headers
     }
 
-    public required init(configuration: AnyNetworkServiceConfiguration) {
+    public required init(configuration: AnyNetworkServiceConfiguration,
+                         recoverers: [AnyNetworkServiceRecoverer] = [],
+                         interceptors: [AnyNetworkServiceInterceptor] = [],
+                         log: AnyLogger?) {
         manager = Alamofire.SessionManager(configuration: configuration.sessionConfiguration)
         manager.startRequestsImmediately = false
         self.configuration = configuration
+        self.recoverers = recoverers
+        self.interceptors = interceptors
+        self.log = log
         manager.adapter = self
         manager.retrier = self
-        log = nil
     }
     
-    public convenience init(configuration: AnyNetworkServiceConfiguration,
-                            log: AnyLogger?) {
-        self.init(configuration: configuration)
-        self.log = log
-    }
-
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
         return AlamofireRequestCallBuilder(request: request)
     }
@@ -63,13 +64,13 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
                         queue: DispatchQueue = .global(),
                         completion: RequestCompletion? = nil) {
         let calls = requestCalls.map(supportedCall).filter { call in
-            let isAllowed = self.interceptors?.allSatisfy { $0.intercept(call: call) } ?? true
+            let isAllowed = self.interceptors.allSatisfy { $0.intercept(call: call) }
             
             if !isAllowed { log?.warning("At least one interceptor has denied \(call.request)") }
             
             return isAllowed
         }
-        registerForRetries(calls)
+        addActiveCalls(calls)
         var capturedResult: EmptyResponse = .success(())
         guard !calls.isEmpty else {
             completion?(capturedResult)
@@ -152,64 +153,49 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         return supportedCall
     }
     
-    public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
-        transform(urlRequest) {
-            $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
-        }
+    /// Calls that are being processed currently.
+    private var activeCalls: [AlamofireRequestCall] = []
+    
+    /// Calls that are pending recovery.
+    private var recoveringCalls: [AlamofireRequestCall] = []
+    
+    private let syncQueue = DispatchQueue(label: "ActiveCallsSynchronizedQueue", attributes: .concurrent)
+    
+    /// Finds an active `AlamofireRequestCall` that corresponds to given `request`.
+    private func activeCall(for request: Alamofire.Request) -> AlamofireRequestCall? {
+        syncQueue.sync { activeCalls.first(where: { $0.originalRequest == request.task?.originalRequest }) }
     }
     
-    private var retiableCalls: [AlamofireRequestCall] = []
-    
-    private let syncQueue = DispatchQueue(label: "RetriableCallsSynchronizedQueue", attributes: .concurrent)
-    
-    private func retriableCall(for request: Alamofire.Request) -> AlamofireRequestCall? {
-        syncQueue.sync { retiableCalls.first(where: { $0.originalRequest == request.task?.originalRequest }) }
-    }
-    
-    private func registerForRetries(_ calls: [AlamofireRequestCall]) {
-        let configuration = self.configuration
-        let newRetriableCalls = calls.filter {
-            configuration.retriableMethods.contains($0.request.method) &&
-            ($0.request.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero) != nil
-        }
+    private func addActiveCalls(_ calls: [AlamofireRequestCall]) {
         syncQueue.async(flags: .barrier) {
-            self.retiableCalls += newRetriableCalls
+            self.activeCalls += calls
         }
     }
     
-    private func unregisterRetriableCall(_ call: AlamofireRequestCall) {
+    private func removeActiveCall(_ call: AlamofireRequestCall) {
         syncQueue.async(flags: .barrier) {
-            self.retiableCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
+            self.activeCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
         }
     }
-
-    public func should(_ manager: SessionManager,
-                       retry request: Request,
-                       with error: Error,
-                       completion: @escaping RequestRetryCompletion) {
-        guard let requestCall = retriableCall(for: request)?.request else {
-            return completion(false, 0)
+    
+    private func addRecoveringCall(_ call: AlamofireRequestCall) {
+        syncQueue.async(flags: .barrier) {
+            self.recoveringCalls.append(call)
         }
-        
-        let configuration = self.configuration
-        
-        guard let maxRetries = requestCall.retryAttempts?.nonZero ?? configuration.retryAttempts?.nonZero else {
-            return completion(false, 0)
+    }
+    
+    private func removeRecoveringCall(_ call: AlamofireRequestCall) {
+        syncQueue.async(flags: .barrier) {
+            self.recoveringCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
         }
-        let retriableFailures = requestCall.retriableFailures ?? configuration.retriableFailures
-        let retriableStatuses = requestCall.retriableStatuses ?? configuration.retriableStatuses
-        
-        let canRetryMore = request.retryCount < maxRetries
-        let isRetriableError = { (error as? URLError).flatMap { retriableFailures?.contains($0.code) } ?? true }
-        let isRetriableStatus = { request.response.flatMap { retriableStatuses?.contains($0.statusCode) } ?? true }
-        
-        let shouldRetry = canRetryMore && (isRetriableStatus() || isRetriableError())
-        if shouldRetry {
-            log?.verbose(tag: self)("Retrying request \(requestCall). Attempt #\(request.retryCount + 1). Retrying after statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
-        } else {
-            log?.verbose(tag: self)("No more retries for request \(requestCall). Failing with statusCode: \(String(describing: request.response?.statusCode)); error: \(error)")
-        }
-        completion(shouldRetry, 1)
+    }
+    
+    /// Finds and removes an `AlamofireRequestCall` that is pending recovery that corresponds to given `request`.
+    private func popRecoveringCall(for request: URLRequest) -> AlamofireRequestCall? {
+        syncQueue.sync(flags: .barrier) { recoveringCalls.removeFirst(where: {
+            $0.originalRequest?.url == request.url &&
+            $0.originalRequest?.httpMethod == request.httpMethod
+        }) }
     }
 }
 
@@ -633,7 +619,7 @@ private extension AlamofireNetworkService {
                                 rawData: Data?,
                                 kind: ResponseKind,
                                 call: AlamofireRequestCall) -> EmptyResponse {
-        defer { unregisterRetriableCall(call) }
+        defer { removeActiveCall(call) }
         guard call.token != nil else {
             log?.verbose(tag: self)("Request has been cancelled and will be ignored")
             return .success(())
@@ -667,7 +653,7 @@ private extension AlamofireNetworkService {
             }
         }()
         
-        let shouldProcess = self.interceptors?.allSatisfy { $0.intercept(call: call, response: httpResponse, body: value) } ?? true
+        let shouldProcess = self.interceptors.allSatisfy { $0.intercept(call: call, response: httpResponse, body: value) }
         
         // If any interceptor blocked response processing then exit.
         guard shouldProcess else {
@@ -797,6 +783,59 @@ private extension AlamofireNetworkService {
         
         // By the end of the loop report successful handling.
         return .success(())
+    }
+}
+
+// MARK: - RequestRetrier
+extension AlamofireNetworkService: RequestRetrier {
+    
+    public func should(_ manager: SessionManager,
+                       retry request: Request,
+                       with error: Error,
+                       completion: @escaping RequestRetryCompletion) {
+        guard let requestCall = activeCall(for: request) else {
+            return completion(false, 0)
+        }
+        
+        guard let recoverer = recoverers.first(where: { $0.canRecover(call: requestCall, response: request.response, error: error as? URLError, in: self) }) else {
+            return completion(false, 0)
+        }
+        
+        addRecoveringCall(requestCall)
+        
+        log?.verbose(tag: self)("Recovering request \(requestCall.request)")
+        recoverer.recover(call: requestCall, response: request.response, error: error as? URLError, in: self) { [weak self] isRecovered in
+            if isRecovered {
+                requestCall.recoveryAttempts += 1
+                self?.log?.verbose(tag: self)("Retrying request \(requestCall.request). Attempt #\(requestCall.recoveryAttempts). Retrying after response: \(String(describing: request.response)); error: \(error)")
+            } else {
+                self?.log?.verbose(tag: self)("No more retries for request \(requestCall.request). Failing with response: \(String(describing: request.response)); error: \(error)")
+                self?.removeRecoveringCall(requestCall)
+            }
+            completion(isRecovered, isRecovered ? 1 : 0)
+        }
+    }
+}
+
+// MARK: - RequestAdapter
+extension AlamofireNetworkService: RequestAdapter {
+    
+    public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
+        transform(urlRequest) {
+            $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
+            
+            // Re-apply headers in case those changed after recovery.
+            // Only do so if the call is recovering, otherwise request has been already configured.
+            if let call = popRecoveringCall(for: $0) {
+                log?.verbose(tag: self)("Updating headers for recovered request \(call.request)")
+                let headers = constructHeaders(withRequest: call.request)
+                for (headerField, headerValue) in headers {
+                    $0.setValue(headerValue, forHTTPHeaderField: headerField)
+                }
+               
+                // TODO: Add parameters invalidation as well, perhaps?
+            }
+        }
     }
 }
 
