@@ -9,7 +9,7 @@ import TSKit_Networking
 import TSKit_Core
 import TSKit_Log
 
-public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, RequestRetrier {
+public class AlamofireNetworkService: AnyNetworkService {
 
     public var backgroundSessionCompletionHandler: (() -> Void)? {
         get {
@@ -20,9 +20,9 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         }
     }
     
-    public var interceptors: [AnyNetworkServiceInterceptor]?
+    public var interceptors: [AnyNetworkServiceInterceptor]
     
-    public var recoverers: [AnyNetworkServiceRecoverer]?
+    public var recoverers: [AnyNetworkServiceRecoverer]
 
     private let manager: Alamofire.SessionManager
 
@@ -41,21 +41,20 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         return configuration.headers
     }
 
-    public required init(configuration: AnyNetworkServiceConfiguration) {
+    public required init(configuration: AnyNetworkServiceConfiguration,
+                         recoverers: [AnyNetworkServiceRecoverer] = [],
+                         interceptors: [AnyNetworkServiceInterceptor] = [],
+                         log: AnyLogger?) {
         manager = Alamofire.SessionManager(configuration: configuration.sessionConfiguration)
         manager.startRequestsImmediately = false
         self.configuration = configuration
+        self.recoverers = recoverers
+        self.interceptors = interceptors
+        self.log = log
         manager.adapter = self
         manager.retrier = self
-        log = nil
     }
     
-    public convenience init(configuration: AnyNetworkServiceConfiguration,
-                            log: AnyLogger?) {
-        self.init(configuration: configuration)
-        self.log = log
-    }
-
     public func builder(for request: AnyRequestable) -> AnyRequestCallBuilder {
         return AlamofireRequestCallBuilder(request: request)
     }
@@ -65,7 +64,7 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
                         queue: DispatchQueue = .global(),
                         completion: RequestCompletion? = nil) {
         let calls = requestCalls.map(supportedCall).filter { call in
-            let isAllowed = self.interceptors?.allSatisfy { $0.intercept(call: call) } ?? true
+            let isAllowed = self.interceptors.allSatisfy { $0.intercept(call: call) }
             
             if !isAllowed { log?.warning("At least one interceptor has denied \(call.request)") }
             
@@ -154,12 +153,6 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
         return supportedCall
     }
     
-    public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
-        transform(urlRequest) {
-            $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
-        }
-    }
-    
     private var retiableCalls: [AlamofireRequestCall] = []
     
     private let syncQueue = DispatchQueue(label: "RetriableCallsSynchronizedQueue", attributes: .concurrent)
@@ -169,6 +162,7 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
     }
     
     private func registerForRetries(_ calls: [AlamofireRequestCall]) {
+        log?.debug(tag: self)("Registering for retrying")
         syncQueue.async(flags: .barrier) {
             self.retiableCalls += calls
         }
@@ -177,29 +171,6 @@ public class AlamofireNetworkService: AnyNetworkService, RequestAdapter, Request
     private func unregisterRetriableCall(_ call: AlamofireRequestCall) {
         syncQueue.async(flags: .barrier) {
             self.retiableCalls.removeFirst(where: { $0.originalRequest == call.originalRequest })
-        }
-    }
-
-    public func should(_ manager: SessionManager,
-                       retry request: Request,
-                       with error: Error,
-                       completion: @escaping RequestRetryCompletion) {
-        guard let requestCall = retriableCall(for: request) else {
-            return completion(false, 0)
-        }
-        
-        guard let recoverer = recoverers?.first(where: {$0.canRecover(call: requestCall, response: request.response, error: error as? URLError, in: self) }) else {
-            return completion(false, 0)
-        }
-        
-        recoverer.recover(call: requestCall, response: request.response, error: error as? URLError, in: self) { [weak self] isRecovered in
-            if isRecovered {
-                requestCall.recoveryAttempts += 1
-                self?.log?.verbose(tag: self)("Retrying request \(requestCall.request). Attempt #\(requestCall.recoveryAttempts). Retrying after response: \(String(describing: request.response)); error: \(error)")
-            } else {
-                self?.log?.verbose(tag: self)("No more retries for request \(requestCall.request). Failing with response: \(String(describing: request.response)); error: \(error)")
-            }
-            completion(isRecovered, isRecovered ? 1 : 0)
         }
     }
 }
@@ -658,7 +629,7 @@ private extension AlamofireNetworkService {
             }
         }()
         
-        let shouldProcess = self.interceptors?.allSatisfy { $0.intercept(call: call, response: httpResponse, body: value) } ?? true
+        let shouldProcess = self.interceptors.allSatisfy { $0.intercept(call: call, response: httpResponse, body: value) }
         
         // If any interceptor blocked response processing then exit.
         guard shouldProcess else {
@@ -788,6 +759,42 @@ private extension AlamofireNetworkService {
         
         // By the end of the loop report successful handling.
         return .success(())
+    }
+}
+
+// MARK: - RequestRetrier
+extension AlamofireNetworkService: RequestRetrier {
+    
+    public func should(_ manager: SessionManager,
+                       retry request: Request,
+                       with error: Error,
+                       completion: @escaping RequestRetryCompletion) {
+        guard let requestCall = retriableCall(for: request) else {
+            return completion(false, 0)
+        }
+        
+        guard let recoverer = recoverers.first(where: {$0.canRecover(call: requestCall, response: request.response, error: error as? URLError, in: self) }) else {
+            return completion(false, 0)
+        }
+        
+        recoverer.recover(call: requestCall, response: request.response, error: error as? URLError, in: self) { [weak self] isRecovered in
+            if isRecovered {
+                requestCall.recoveryAttempts += 1
+                self?.log?.verbose(tag: self)("Retrying request \(requestCall.request). Attempt #\(requestCall.recoveryAttempts). Retrying after response: \(String(describing: request.response)); error: \(error)")
+            } else {
+                self?.log?.verbose(tag: self)("No more retries for request \(requestCall.request). Failing with response: \(String(describing: request.response)); error: \(error)")
+            }
+            completion(isRecovered, isRecovered ? 1 : 0)
+        }
+    }
+}
+
+extension AlamofireNetworkService: RequestAdapter {
+    
+    public func adapt(_ urlRequest: URLRequest) throws -> URLRequest {
+        transform(urlRequest) {
+            $0.timeoutInterval = configuration.timeoutInterval ?? configuration.sessionConfiguration.timeoutIntervalForRequest
+        }
     }
 }
 
