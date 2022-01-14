@@ -5,6 +5,12 @@ import PackageDescription
 
 let package = Package(
     name: "TSKit.Networking.Alamofire",
+    platforms: [
+        .iOS(.v12),
+        .tvOS(.v12),
+        .watchOS(.v5),
+        .macOS(.v10_15)
+    ],
     products: [
         .library(
             name: "TSKit.Networking.Alamofire",
