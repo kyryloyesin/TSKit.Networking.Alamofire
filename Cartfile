@@ -1,4 +1,4 @@
-github "Alamofire/Alamofire" == 5.4.4
+github "Alamofire/Alamofire" == 4.9.0
 github "adya/TSKit.Networking" ~> 4.2
 github "adya/TSKit.Log" ~> 2.0
 github "adya/TSKit.Core" ~> 2.2
